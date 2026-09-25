@@ -908,6 +908,21 @@ a:hover { text-decoration: underline; }
 /* Inner padding wrapper — use on page content below topbar */
 .admin-body { padding: 1.75rem 2rem; }
 
+/* Form action buttons (e.g. publish/save + cancel) — stacked on mobile, side by side from sm up */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .form-actions {
+    flex-direction: row;
+  }
+  .form-actions > * {
+    flex: 1;
+  }
+}
+
 /* Cards */
 .card {
   background: #fff;
@@ -2536,6 +2551,100 @@ textarea.form-control { min-height: 100px; resize: vertical; }
   color: var(--color-muted);
   font-style: italic;
   margin-bottom: 2.5rem;
+}
+
+/* ============================================================
+   Carrossel de imagens da matéria (corpo do artigo)
+   ============================================================ */
+.article-image-carousel {
+  margin-bottom: 2.5rem;
+}
+
+.article-image-carousel__viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-primary);
+}
+
+.article-image-carousel__track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.article-image-carousel__slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+}
+
+.article-image-carousel__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.article-image-carousel__btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.article-image-carousel__btn:hover { background: rgba(255, 255, 255, 0.3); }
+.article-image-carousel__btn--prev { left: 0.75rem; }
+.article-image-carousel__btn--next { right: 0.75rem; }
+
+.article-image-carousel__dots {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.article-image-carousel__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  padding: 0;
+}
+
+.article-image-carousel__dot.is-active {
+  background: #fff;
+  border-color: #fff;
+  transform: scale(1.25);
+}
+
+.article-image-carousel__caption {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-style: italic;
+  margin-top: 0.5rem;
+  margin-bottom: 0;
 }
 
 /* Corpo de leitura ampliado */

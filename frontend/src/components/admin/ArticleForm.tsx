@@ -1,8 +1,25 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { toSlug } from "@/lib/format";
+import { uploadArticleImageAction } from "@/app/admin/(dashboard)/artigos/actions";
 import type { ArticleOut, AuthorMini, CategoryOut } from "@/lib/types";
+
+type ImageDraft = {
+  key: string;
+  url: string;
+  photographer: string;
+  mode: "url" | "upload";
+  uploading: boolean;
+  uploadError: string | null;
+  previewError: boolean;
+};
+
+let draftKeySeq = 0;
+function makeDraftKey() {
+  draftKeySeq += 1;
+  return `img-${draftKeySeq}`;
+}
 
 const TOOLBAR_BUTTONS: { cmd: string; val?: string; title: string; label: string }[] = [
   { cmd: "bold", title: "Negrito (Ctrl+B)", label: "B" },
@@ -37,13 +54,79 @@ export default function ArticleForm({
 
   const [slug, setSlug] = useState(article?.slug ?? "");
   const slugEdited = useRef(Boolean(article?.slug));
-  const [imgUrl, setImgUrl] = useState(article?.featured_image_url ?? "");
-  const [imgError, setImgError] = useState(false);
+
+  const [images, setImages] = useState<ImageDraft[]>(() =>
+    (article?.images ?? []).map((img) => ({
+      key: makeDraftKey(),
+      url: img.image_url,
+      photographer: img.photographer ?? "",
+      mode: "url" as const,
+      uploading: false,
+      uploadError: null,
+      previewError: false,
+    }))
+  );
+  const [, startUploadTransition] = useTransition();
 
   const [isPublished, setIsPublished] = useState(article?.is_published ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitIntent, setSubmitIntent] = useState<"publish" | "save_draft" | "save_edit" | null>(null);
   const [statusWarning, setStatusWarning] = useState<string | null>(null);
+
+  function addImage() {
+    setImages((prev) => [
+      ...prev,
+      {
+        key: makeDraftKey(),
+        url: "",
+        photographer: "",
+        mode: "url",
+        uploading: false,
+        uploadError: null,
+        previewError: false,
+      },
+    ]);
+  }
+
+  function removeImage(key: string) {
+    setImages((prev) => prev.filter((img) => img.key !== key));
+  }
+
+  function moveImage(key: string, direction: -1 | 1) {
+    setImages((prev) => {
+      const index = prev.findIndex((img) => img.key === key);
+      const targetIndex = index + direction;
+      if (index === -1 || targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
+
+  function updateImage(key: string, patch: Partial<ImageDraft>) {
+    setImages((prev) => prev.map((img) => (img.key === key ? { ...img, ...patch } : img)));
+  }
+
+  function handleImageFile(key: string, file: File | undefined) {
+    if (!file) return;
+    updateImage(key, { uploading: true, uploadError: null });
+    const formData = new FormData();
+    formData.append("file", file);
+    startUploadTransition(async () => {
+      const result = await uploadArticleImageAction(formData);
+      if ("error" in result) {
+        updateImage(key, { uploading: false, uploadError: result.error });
+      } else {
+        updateImage(key, { uploading: false, uploadError: null, url: result.url, previewError: false });
+      }
+    });
+  }
+
+  const imagesJsonValue = JSON.stringify(
+    images
+      .map((img) => ({ url: img.url.trim(), photographer: img.photographer.trim() || null }))
+      .filter((img) => img.url)
+  );
 
   function syncBody() {
     if (bodyHiddenRef.current && editorRef.current) {
@@ -182,7 +265,7 @@ export default function ArticleForm({
               Ver no site ↗
             </a>
           )}
-          {mode === "edit" ? (
+          {mode === "edit" && (
             <button
               type="button"
               onClick={handleSaveEditClick}
@@ -191,16 +274,6 @@ export default function ArticleForm({
               style={{ minWidth: 140 }}
             >
               {isSubmitting && submitIntent === "save_edit" ? "Salvando…" : "Salvar alterações"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handlePublishClick}
-              disabled={isSubmitting}
-              className="btn-primary"
-              style={{ minWidth: 110 }}
-            >
-              {isSubmitting && submitIntent === "publish" ? "Publicando…" : "Publicar"}
             </button>
           )}
         </div>
@@ -499,74 +572,219 @@ export default function ArticleForm({
                 style={{
                   fontSize: "0.8rem",
                   fontWeight: 700,
-                  marginBottom: "1rem",
+                  marginBottom: "0.5rem",
                   color: "var(--color-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "0.07em",
                 }}
               >
-                Imagem de destaque
+                Imagens
               </h3>
-              <div className="form-group" style={{ marginBottom: "0.75rem" }}>
-                <label className="form-label" htmlFor="featured_image_url">
-                  URL da imagem
-                </label>
-                <input
-                  className="form-control"
-                  type="url"
-                  id="featured_image_url"
-                  name="featured_image_url"
-                  placeholder="https://…"
-                  value={imgUrl}
-                  onChange={(e) => {
-                    setImgUrl(e.target.value);
-                    setImgError(false);
-                  }}
-                />
-              </div>
-              <div className={`img-preview${imgUrl && !imgError ? " has-img" : ""}`}>
-                {imgUrl && !imgError && (
-                  <img src={imgUrl} alt="Pré-visualização da capa" onError={() => setImgError(true)} />
-                )}
-                {imgUrl && imgError && (
-                  <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-secondary)", fontSize: "0.8rem" }}>
-                    Imagem inacessível ou link inválido. Verifique se o endereço é público e direto.
+              <p className="form-hint" style={{ marginBottom: "0.875rem" }}>
+                A primeira imagem da lista vira a capa da matéria. Nenhuma imagem é obrigatória.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+                {images.map((img, index) => (
+                  <div
+                    key={img.key}
+                    style={{ border: "1px solid var(--color-border)", borderRadius: 6, padding: "0.75rem" }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "0.625rem",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          color: "var(--color-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Imagem {index + 1}
+                        {index === 0 ? " (capa)" : ""}
+                      </span>
+                      <div style={{ display: "flex", gap: "0.25rem" }}>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Mover para cima"
+                          disabled={index === 0}
+                          onClick={() => moveImage(img.key, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-icon"
+                          title="Mover para baixo"
+                          disabled={index === images.length - 1}
+                          onClick={() => moveImage(img.key, 1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-icon btn-icon--danger"
+                          title="Remover imagem"
+                          onClick={() => removeImage(img.key)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem" }}>
+                      <button
+                        type="button"
+                        className={img.mode === "url" ? "btn-secondary" : "btn-icon"}
+                        style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
+                        onClick={() => updateImage(img.key, { mode: "url" })}
+                      >
+                        Colar URL
+                      </button>
+                      <button
+                        type="button"
+                        className={img.mode === "upload" ? "btn-secondary" : "btn-icon"}
+                        style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
+                        onClick={() => updateImage(img.key, { mode: "upload" })}
+                      >
+                        Enviar arquivo
+                      </button>
+                    </div>
+
+                    {img.mode === "url" ? (
+                      <div className="form-group" style={{ marginBottom: "0.625rem" }}>
+                        <input
+                          className="form-control"
+                          type="url"
+                          placeholder="https://…"
+                          value={img.url}
+                          onChange={(e) => updateImage(img.key, { url: e.target.value, previewError: false })}
+                        />
+                      </div>
+                    ) : (
+                      <div className="form-group" style={{ marginBottom: "0.625rem" }}>
+                        <input
+                          className="form-control"
+                          type="file"
+                          accept="image/*"
+                          disabled={img.uploading}
+                          onChange={(e) => handleImageFile(img.key, e.target.files?.[0])}
+                        />
+                        {img.uploading && <p className="form-hint">Enviando…</p>}
+                        {img.uploadError && (
+                          <p style={{ color: "var(--color-secondary)", fontSize: "0.75rem", marginTop: "0.375rem" }}>
+                            {img.uploadError}
+                          </p>
+                        )}
+                        {!img.uploading && !img.uploadError && img.url && (
+                          <p className="form-hint">Arquivo enviado.</p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="form-group" style={{ marginBottom: "0.625rem" }}>
+                      <input
+                        className="form-control"
+                        type="text"
+                        placeholder="Fotógrafo (opcional)"
+                        value={img.photographer}
+                        onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
+                      />
+                    </div>
+
+                    <div className={`img-preview${img.url && !img.previewError ? " has-img" : ""}`}>
+                      {img.url && !img.previewError && (
+                        <img
+                          src={img.url}
+                          alt={`Pré-visualização da imagem ${index + 1}`}
+                          onError={() => updateImage(img.key, { previewError: true })}
+                        />
+                      )}
+                      {img.url && img.previewError && (
+                        <div
+                          style={{
+                            padding: "1rem",
+                            textAlign: "center",
+                            color: "var(--color-secondary)",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          Imagem inacessível ou link inválido. Verifique se o endereço é público e direto.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-                {!imgUrl && (
-                  <div style={{ padding: "1rem", textAlign: "center", color: "var(--color-muted)", fontSize: "0.75rem" }}>
-                    Cole o link direto da foto (formato recomendado: 1200 × 630px).
-                  </div>
+                ))}
+
+                {images.length === 0 && (
+                  <p className="form-hint" style={{ margin: 0 }}>
+                    Nenhuma imagem adicionada ainda.
+                  </p>
                 )}
               </div>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ width: "100%", marginTop: "1rem" }}
+                onClick={addImage}
+              >
+                + Adicionar imagem
+              </button>
+
+              <input type="hidden" name="images_json" value={imagesJsonValue} readOnly />
             </div>
 
             {/* Ações abaixo da URL da Imagem */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div className="form-actions">
               {mode === "edit" ? (
-                <button
-                  type="button"
-                  onClick={handleSaveEditClick}
-                  disabled={isSubmitting}
-                  className="btn-primary"
-                  style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
-                >
-                  {isSubmitting && submitIntent === "save_edit" ? "Salvando…" : "Salvar alterações"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleSaveEditClick}
+                    disabled={isSubmitting}
+                    className="btn-primary"
+                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                  >
+                    {isSubmitting && submitIntent === "save_edit" ? "Salvando…" : "Salvar alterações"}
+                  </button>
+                  <a href="/admin" className="btn-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.8 }}>
+                    Cancelar
+                  </a>
+                </>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleSaveDraftClick}
-                  disabled={isSubmitting}
-                  className="btn-secondary"
-                  style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
-                >
-                  {isSubmitting && submitIntent === "save_draft" ? "Salvando…" : "Salvar como rascunho"}
-                </button>
+                <>
+                  <a href="/admin" className="btn-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.8 }}>
+                    Cancelar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleSaveDraftClick}
+                    disabled={isSubmitting}
+                    className="btn-secondary"
+                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                  >
+                    {isSubmitting && submitIntent === "save_draft" ? "Salvando…" : "Salvar como rascunho"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePublishClick}
+                    disabled={isSubmitting}
+                    className="btn-primary"
+                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                  >
+                    {isSubmitting && submitIntent === "publish" ? "Publicando…" : "Publicar"}
+                  </button>
+                </>
               )}
-              <a href="/admin" className="btn-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.8 }}>
-                Cancelar
-              </a>
             </div>
           </div>
         </div>

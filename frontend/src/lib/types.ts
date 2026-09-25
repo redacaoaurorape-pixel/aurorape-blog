@@ -54,6 +54,24 @@ export interface TagOut {
   slug: string;
 }
 
+// Formato de LEITURA — como o backend devolve cada imagem em ArticleOut.images
+export interface ArticleImageOut {
+  id: number;
+  image_url: string;
+  photographer?: string | null;
+  sort_order: number;
+}
+
+// Formato de ESCRITA — como o backend espera cada imagem em ArticleCreate/ArticleUpdate.images
+export interface ArticleImageIn {
+  url: string;
+  photographer?: string | null;
+}
+
+export interface UploadResponse {
+  url: string;
+}
+
 export interface ArticleListItem {
   id: number;
   title: string;
@@ -71,6 +89,7 @@ export interface ArticleListItem {
 export interface ArticleOut extends ArticleListItem {
   body: string;
   tags: TagOut[];
+  images: ArticleImageOut[];
   created_at: string;
   updated_at: string;
 }
@@ -81,7 +100,7 @@ export interface ArticleCreate {
   subtitle?: string | null;
   chapeu?: string | null;
   body: string;
-  featured_image_url?: string | null;
+  images: ArticleImageIn[];
   reading_time_min?: number | null;
   is_published: boolean;
   author_id: number;

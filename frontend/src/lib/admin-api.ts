@@ -1,4 +1,4 @@
-import { apiDelete, apiGetAuthed, apiPost, apiPut } from "./api";
+import { apiDelete, apiGetAuthed, apiPost, apiPostForm, apiPut } from "./api";
 import type {
   ArticleCreate,
   ArticleListItem,
@@ -12,6 +12,7 @@ import type {
   DashboardResponse,
   LoginRequest,
   TokenResponse,
+  UploadResponse,
 } from "./types";
 
 export function login(payload: LoginRequest) {
@@ -40,6 +41,12 @@ export function updateArticle(token: string, id: number | string, payload: Artic
 
 export function deleteArticle(token: string, id: number | string) {
   return apiDelete<void>(`/admin/articles/${id}`, token);
+}
+
+export function uploadImage(token: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiPostForm<UploadResponse>("/admin/uploads", formData, token);
 }
 
 export function listAuthors(token: string) {

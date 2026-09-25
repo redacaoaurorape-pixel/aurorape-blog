@@ -17,10 +17,11 @@ async function request<T>(
   path: string,
   init?: RequestInit & { next?: NextFetchRequestConfig }
 ): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...init?.headers,
     },
   });
@@ -48,6 +49,14 @@ export function apiPost<T>(path: string, body?: unknown, token?: string): Promis
   return request<T>(path, {
     method: "POST",
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+}
+
+export function apiPostForm<T>(path: string, formData: FormData, token?: string): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    body: formData,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 }

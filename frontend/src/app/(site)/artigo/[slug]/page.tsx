@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api";
 import { getArticle, getRelated } from "@/lib/public-api";
 import { formatDateLong } from "@/lib/format";
 import ArticleCard from "@/components/ArticleCard";
+import ArticleImageCarousel from "@/components/ArticleImageCarousel";
 import ArticleFontControl from "@/components/article/ArticleFontControl";
 import ShareBar from "@/components/article/ShareBar";
 import NewsletterForm from "@/components/NewsletterForm";
@@ -77,9 +78,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
             <ShareBar title={article.title} />
 
-            {article.featured_image_url && (
-              <img className="piaui-article__image" src={article.featured_image_url} alt={article.title} loading="eager" />
-            )}
+            <ArticleImageCarousel images={article.images} />
 
             <div
               className="piaui-body"
