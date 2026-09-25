@@ -14,6 +14,20 @@ class TagOut(BaseModel):
     slug: str
 
 
+class ArticleImageIn(BaseModel):
+    url: str
+    photographer: str | None = None
+
+
+class ArticleImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    image_url: str
+    photographer: str | None = None
+    sort_order: int
+
+
 class ArticleListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +47,7 @@ class ArticleListItem(BaseModel):
 class ArticleOut(ArticleListItem):
     body: str
     tags: list[TagOut] = []
+    images: list[ArticleImageOut] = []
     created_at: datetime
     updated_at: datetime
 
@@ -43,7 +58,7 @@ class ArticleCreate(BaseModel):
     subtitle: str | None = None
     chapeu: str | None = None
     body: str
-    featured_image_url: str | None = None
+    images: list[ArticleImageIn] = []
     reading_time_min: int | None = None
     is_published: bool = False
     author_id: int

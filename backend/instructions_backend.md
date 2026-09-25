@@ -439,6 +439,12 @@ FOR EACH ROW EXECUTE FUNCTION articles_search_vector_update();
 | `DEBUG` | Não | Default: `True`. Desabilitar em produção |
 | `SITE_NAME` | Não | Default: `Aurora PE` |
 | `SITE_URL` | Não | Default: `http://localhost:8000` |
+| `BUCKET_ENDPOINT_URL` | Não | Endpoint S3-compatible (ex: Railway). Vazio = upload de imagem desabilitado (retorna 500 controlado) |
+| `BUCKET_NAME` | Não | Nome do bucket |
+| `BUCKET_ACCESS_KEY_ID` | Não | Access key do bucket |
+| `BUCKET_SECRET_ACCESS_KEY` | Não | Secret key do bucket |
+| `BUCKET_REGION` | Não | Default: `auto` |
+| `BUCKET_PUBLIC_URL_BASE` | Não | Base da URL pública usada para montar a URL retornada após o upload |
 
 Gerar `SECRET_KEY`:
 ```bash
@@ -451,13 +457,23 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ### 10.1 Upload de imagens
 
-Fluxo recomendado: upload direto para S3/R2, backend gera URL assinada:
+**Implementado.** Upload multipart direto pelo backend (não presigned URL):
 
 ```
-Admin → POST /admin/upload-url  →  backend gera presigned URL  →  admin faz PUT direto no S3
+Admin → POST /api/v1/admin/uploads (multipart/form-data, campo "file")
+     → backend valida content-type e tamanho (≤8MB)
+     → backend envia para o bucket via boto3 (put_object, rodado em threadpool)
+     → resposta: {"url": "https://.../articles/<uuid>.<ext>"}
 ```
 
-Bibliotecas: `boto3` (AWS S3) ou `cloudflare-r2` SDK. Processar thumbnails com `Pillow` ou delegar ao Cloudflare Images.
+Detalhes:
+- Endpoint protegido por `Depends(get_current_admin)`.
+- Tipos aceitos: `image/jpeg`, `image/png`, `image/webp`, `image/gif`. Outros tipos retornam `400`.
+- Tamanho máximo: 8MB. Acima disso retorna `400`.
+- Chave do objeto: `articles/{uuid4().hex}{extensão}`.
+- Implementação em `app/services/storage.py` (cliente `boto3` S3-compatible, construído a partir das env vars `BUCKET_*`; chamada síncrona do `boto3` rodada via `starlette.concurrency.run_in_threadpool`).
+- Sem `BUCKET_ENDPOINT_URL` configurada, o endpoint responde `500` com mensagem clara ("Upload não configurado") em vez de quebrar — colar URL de imagem direto no formulário continua funcionando normalmente nesse cenário.
+- Limpeza de arquivos órfãos no bucket (quando uma imagem é removida/substituída no formulário) **não é feita automaticamente** — fica como tarefa futura.
 
 ### 10.2 Newsletter (envio de e-mails)
 

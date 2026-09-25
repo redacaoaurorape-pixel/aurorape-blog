@@ -1,13 +1,14 @@
+import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies import get_current_admin
-from app.models.article import Article
+from app.models.article import Article, ArticleImage
 from app.models.author import Author
 from app.models.category import Category
 from app.models.user import AdminUser
@@ -17,7 +18,17 @@ from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.category import CategoryCreate, CategoryOut
 from app.services import article as article_svc
 from app.services.auth import authenticate_user, create_access_token, hash_password
+from app.services.storage import StorageNotConfiguredError, upload_file
 from app.services.text import calculate_reading_time, sanitize_html, slugify, unique_slug
+
+ALLOWED_UPLOAD_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024
+CONTENT_TYPE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -78,7 +89,12 @@ async def article_detail(
 ):
     query = (
         select(Article)
-        .options(selectinload(Article.author), selectinload(Article.category), selectinload(Article.tags))
+        .options(
+            selectinload(Article.author),
+            selectinload(Article.category),
+            selectinload(Article.tags),
+            selectinload(Article.images),
+        )
     )
     if article_id.isdigit():
         result = await db.execute(query.where(Article.id == int(article_id)))
@@ -107,17 +123,30 @@ async def article_create(
         subtitle=payload.subtitle,
         chapeu=payload.chapeu,
         body=body,
-        featured_image_url=payload.featured_image_url,
+        featured_image_url=payload.images[0].url if payload.images else None,
         reading_time_min=reading_time,
         is_published=payload.is_published,
         published_at=datetime.utcnow() if payload.is_published else None,
         author_id=payload.author_id,
         category_id=payload.category_id,
     )
+    article.images = [
+        ArticleImage(image_url=img.url, photographer=img.photographer, sort_order=order)
+        for order, img in enumerate(payload.images)
+    ]
     db.add(article)
     await db.commit()
-    await db.refresh(article, attribute_names=["author", "category", "tags", "created_at", "updated_at"])
-    return article
+    result = await db.execute(
+        select(Article)
+        .options(
+            selectinload(Article.author),
+            selectinload(Article.category),
+            selectinload(Article.tags),
+            selectinload(Article.images),
+        )
+        .where(Article.id == article.id)
+    )
+    return result.scalars().one()
 
 
 @router.put("/articles/{article_id}", response_model=ArticleOut)
@@ -132,7 +161,9 @@ async def article_update(
     else:
         cond = Article.slug == article_id
 
-    result = await db.execute(select(Article).where(cond))
+    result = await db.execute(
+        select(Article).options(selectinload(Article.images)).where(cond)
+    )
     article = result.scalars().first()
     if not article:
         raise HTTPException(status_code=404, detail="Artigo não encontrado")
@@ -144,7 +175,7 @@ async def article_update(
     article.subtitle = payload.subtitle
     article.chapeu = payload.chapeu
     article.body = sanitize_html(payload.body)
-    article.featured_image_url = payload.featured_image_url
+    article.featured_image_url = payload.images[0].url if payload.images else None
     article.reading_time_min = payload.reading_time_min or calculate_reading_time(article.body)
     article.author_id = payload.author_id
     article.category_id = payload.category_id
@@ -152,9 +183,23 @@ async def article_update(
         article.published_at = datetime.utcnow()
     article.is_published = payload.is_published
 
+    article.images = [
+        ArticleImage(image_url=img.url, photographer=img.photographer, sort_order=order)
+        for order, img in enumerate(payload.images)
+    ]
+
     await db.commit()
-    await db.refresh(article, attribute_names=["author", "category", "tags", "created_at", "updated_at"])
-    return article
+    result = await db.execute(
+        select(Article)
+        .options(
+            selectinload(Article.author),
+            selectinload(Article.category),
+            selectinload(Article.tags),
+            selectinload(Article.images),
+        )
+        .where(Article.id == resolved_id)
+    )
+    return result.scalars().one()
 
 
 @router.delete("/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -174,6 +219,37 @@ async def article_delete(
         await db.delete(article)
         await db.commit()
     return None
+
+
+# ─── Uploads ──────────────────────────────────────────────────────────────────
+
+@router.post("/uploads")
+async def upload_image(
+    file: UploadFile,
+    current_user: AdminUser = Depends(get_current_admin),
+):
+    if file.content_type not in ALLOWED_UPLOAD_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tipo de arquivo não suportado. Envie uma imagem JPEG, PNG, WEBP ou GIF.",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo muito grande. O tamanho máximo permitido é 8MB.",
+        )
+
+    ext = CONTENT_TYPE_EXTENSIONS[file.content_type]
+    key = f"articles/{uuid.uuid4().hex}{ext}"
+
+    try:
+        url = await upload_file(key=key, content=contents, content_type=file.content_type)
+    except StorageNotConfiguredError:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Upload não configurado")
+
+    return {"url": url}
 
 
 # ─── Authors ──────────────────────────────────────────────────────────────────

@@ -63,6 +63,32 @@ class Article(Base):
     tags: Mapped[list["Tag"]] = relationship(
         "Tag", secondary=article_tags, back_populates="articles"
     )
+    images: Mapped[list["ArticleImage"]] = relationship(
+        "ArticleImage",
+        back_populates="article",
+        cascade="all, delete-orphan",
+        order_by="ArticleImage.sort_order",
+    )
 
     def __repr__(self) -> str:
         return f"<Article {self.slug}>"
+
+
+class ArticleImage(Base):
+    __tablename__ = "article_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    image_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    photographer: Mapped[str | None] = mapped_column(String(200))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    article: Mapped["Article"] = relationship("Article", back_populates="images")
+
+    def __repr__(self) -> str:
+        return f"<ArticleImage {self.id} article_id={self.article_id}>"

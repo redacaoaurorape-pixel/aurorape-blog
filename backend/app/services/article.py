@@ -66,6 +66,7 @@ async def get_article_by_slug(db: AsyncSession, slug: str) -> Article | None:
             selectinload(Article.author),
             selectinload(Article.category),
             selectinload(Article.tags),
+            selectinload(Article.images),
         )
     )
     return result.scalars().first()

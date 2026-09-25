@@ -40,3 +40,13 @@ if not DEBUG and not TESTING and (SECRET_KEY == "dev-secret-key-change-in-produc
 
 # Origens permitidas por CORS, separadas por vírgula (ex: "http://localhost:3000,https://aurorape.vercel.app")
 CORS_ORIGINS: str = config("CORS_ORIGINS", default="http://localhost:3000")
+
+# Bucket S3-compatible (ex: Railway) para upload de imagens de matérias.
+# Enquanto BUCKET_ENDPOINT_URL não estiver configurado, o endpoint de upload
+# responde com erro controlado — colar URL de imagem continua funcionando normalmente.
+BUCKET_ENDPOINT_URL: str = config("BUCKET_ENDPOINT_URL", default="")
+BUCKET_NAME: str = config("BUCKET_NAME", default="")
+BUCKET_ACCESS_KEY_ID: str = config("BUCKET_ACCESS_KEY_ID", default="")
+BUCKET_SECRET_ACCESS_KEY: str = config("BUCKET_SECRET_ACCESS_KEY", default="")
+BUCKET_REGION: str = config("BUCKET_REGION", default="auto")
+BUCKET_PUBLIC_URL_BASE: str = config("BUCKET_PUBLIC_URL_BASE", default="")
