@@ -20,6 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Google AdSense
+
+Os espaços de anúncio (sidebar da matéria, banners inline na home) usam o componente `src/components/AdUnit.tsx`. Configure estas variáveis de ambiente (veja `.env.example`) quando a conta AdSense estiver aprovada:
+
+- `NEXT_PUBLIC_ADSENSE_CLIENT_ID`
+- `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_SIDEBAR_MEDIUM`
+- `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_SIDEBAR_LARGE`
+- `NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE_TOP`
+- `NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE_BOTTOM`
+
+**Sem essas variáveis preenchidas, nada muda**: os espaços continuam mostrando o placeholder tracejado "Publicidade" de sempre, e o script do AdSense nem é carregado. Só ative depois que o Publisher ID e os slots reais existirem — nunca use valores inventados.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

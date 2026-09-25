@@ -7,6 +7,7 @@ import { getArticle, getRelated } from "@/lib/public-api";
 import { formatDateLong } from "@/lib/format";
 import ArticleCard from "@/components/ArticleCard";
 import ArticleImageCarousel from "@/components/ArticleImageCarousel";
+import AdUnit from "@/components/AdUnit";
 import ArticleFontControl from "@/components/article/ArticleFontControl";
 import ShareBar from "@/components/article/ShareBar";
 import NewsletterForm from "@/components/NewsletterForm";
@@ -145,14 +146,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
 
         <aside className="ad-sidebar" aria-label="Publicidade">
-          <div className="ad-placeholder ad-placeholder--mpu" role="img" aria-label="Espaço publicitário 300×250">
-            <span className="ad-placeholder__label">Publicidade</span>
-            <span className="ad-placeholder__size">300 × 250</span>
-          </div>
-          <div className="ad-placeholder ad-placeholder--half" role="img" aria-label="Espaço publicitário 300×600">
-            <span className="ad-placeholder__label">Publicidade</span>
-            <span className="ad-placeholder__size">300 × 600</span>
-          </div>
+          <AdUnit preset="sidebarMedium" slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_SIDEBAR_MEDIUM} />
+          <AdUnit preset="sidebarLarge" slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_SIDEBAR_LARGE} />
         </aside>
       </div>
     </div>

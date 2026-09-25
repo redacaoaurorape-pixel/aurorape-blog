@@ -1,4 +1,6 @@
 .env
+.env.local
+.env.*.local
 *.db
 *.db-wal
 *.db-shm
@@ -15,3 +17,4 @@ build/
 htmlcov/
 .coverage
 mangue-skills/
+skills/

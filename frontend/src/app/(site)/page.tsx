@@ -5,6 +5,7 @@ import { getHome } from "@/lib/public-api";
 import HeroCarousel from "@/components/HeroCarousel";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterForm from "@/components/NewsletterForm";
+import AdUnit from "@/components/AdUnit";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ export default async function HomePage() {
           </section>
         )}
 
-        <AdPlaceholder />
+        <AdUnit preset="inline" slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE_TOP} />
 
         {feed.length > 0 && (
           <section aria-label="Últimas notícias" style={{ marginBottom: "3.5rem" }}>
@@ -113,7 +114,7 @@ export default async function HomePage() {
           </Link>
         </section>
 
-        <AdPlaceholder />
+        <AdUnit preset="inline" slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE_BOTTOM} />
 
         <section aria-label="Newsletter" className="newsletter-block" style={{ marginBottom: "4rem" }}>
           <h2>Não perca nada do Aurora PE</h2>
@@ -155,19 +156,5 @@ export default async function HomePage() {
         </section>
       </div>
     </>
-  );
-}
-
-function AdPlaceholder() {
-  return (
-    <div className="ad-inline" aria-label="Publicidade">
-      <div className="ad-placeholder ad-placeholder--banner" role="img" aria-label="Espaço publicitário 728×90">
-        <span className="ad-placeholder__label">Publicidade</span>
-        <span className="ad-placeholder__size">728 × 90</span>
-      </div>
-      <div className="ad-placeholder ad-placeholder--strip" role="img" aria-label="Espaço publicitário mobile">
-        <span className="ad-placeholder__label">Publicidade</span>
-      </div>
-    </div>
   );
 }
