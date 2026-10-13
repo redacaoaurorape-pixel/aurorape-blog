@@ -9,10 +9,15 @@ export const metadata = { title: "Matérias — Aurora PE Admin" };
 
 export default async function AdminDashboardPage() {
   const token = await requireAdminToken();
-  const [{ total_articles, total_published, total_authors }, articles] = await Promise.all([
+  const [dashboardData, articles] = await Promise.all([
     getDashboard(token),
     listArticles(token),
   ]);
+  const { total_articles, total_published, total_authors } = dashboardData;
+  const total_views = dashboardData.total_views ?? articles.reduce((acc, a) => acc + (a.views_count ?? 0), 0);
+  const avg_reading_time = articles.length > 0
+    ? Math.round(articles.reduce((acc, a) => acc + (a.reading_time_min ?? 1), 0) / articles.length)
+    : 1;
 
   return (
     <>
@@ -47,6 +52,14 @@ export default async function AdminDashboardPage() {
           <div className="stat-card stat-card--accent">
             <div className="stat-card__value">{total_authors}</div>
             <div className="stat-card__label">Colaboradores</div>
+          </div>
+          <div className="stat-card stat-card--primary">
+            <div className="stat-card__value">{total_views}</div>
+            <div className="stat-card__label">Total de acessos</div>
+          </div>
+          <div className="stat-card stat-card--accent">
+            <div className="stat-card__value">{avg_reading_time} min</div>
+            <div className="stat-card__label">Tempo médio de leitura</div>
           </div>
         </div>
 
@@ -97,6 +110,7 @@ export default async function AdminDashboardPage() {
                 <th>Título</th>
                 <th>Autor</th>
                 <th>Categoria</th>
+                <th>Visualizações</th>
                 <th>Status</th>
                 <th>Data</th>
                 <th style={{ width: 100 }} />
@@ -121,6 +135,9 @@ export default async function AdminDashboardPage() {
                       <span style={{ fontSize: "0.75rem", color: "var(--color-accent)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                         {article.category.name}
                       </span>
+                    </td>
+                    <td style={{ fontWeight: 600, color: "var(--color-text)" }}>
+                      {article.views_count ?? 0}
                     </td>
                     <td>
                       {article.is_published ? (
@@ -157,7 +174,7 @@ export default async function AdminDashboardPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", color: "var(--color-muted)", padding: "3.5rem" }}>
+                  <td colSpan={7} style={{ textAlign: "center", color: "var(--color-muted)", padding: "3.5rem" }}>
                     Nenhuma matéria cadastrada.
                     <Link href="/admin/artigos/novo" style={{ color: "var(--color-secondary)", fontWeight: 600, marginLeft: "0.5rem" }}>
                       Criar a primeira →

@@ -15,7 +15,7 @@ export default function HeroCarousel({
   hero?: ArticleListItem | null;
   secondary: ArticleListItem[];
 }) {
-  const slides = hero ? [hero, ...secondary.slice(0, 2)] : [];
+  const slides = hero ? [hero, ...secondary.slice(0, 4)] : [];
   const total = slides.length;
   const [current, setCurrent] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);

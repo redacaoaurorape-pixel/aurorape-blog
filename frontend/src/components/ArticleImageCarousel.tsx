@@ -131,7 +131,7 @@ export default function ArticleImageCarousel({ images }: { images: ArticleImageO
         )}
       </div>
 
-      {active.photographer && <p className="article-image-carousel__caption">Fotógrafo: {active.photographer}</p>}
+      {active.photographer && <p className="article-image-carousel__caption">Foto: {active.photographer}</p>}
     </div>
   );
 }

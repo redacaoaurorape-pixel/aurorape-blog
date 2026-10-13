@@ -87,6 +87,9 @@ export default function Header({ categories }: { categories: CategoryOut[] }) {
               <Link href="/" aria-current={pathname === "/" ? "page" : undefined}>
                 Início
               </Link>
+              <Link href="/ultimas-noticias" aria-current={pathname === "/ultimas-noticias" ? "page" : undefined}>
+                Últimas Notícias
+              </Link>
               {topCategories.map((cat) => (
                 <Link
                   key={cat.slug}
@@ -127,6 +130,9 @@ export default function Header({ categories }: { categories: CategoryOut[] }) {
         <nav className={`masthead-mobile-menu${menuOpen ? " is-open" : ""}`} id="mobile-menu" aria-label="Menu mobile">
           <Link href="/" onClick={() => setMenuOpen(false)}>
             Início
+          </Link>
+          <Link href="/ultimas-noticias" onClick={() => setMenuOpen(false)}>
+            Últimas Notícias
           </Link>
           {topCategories.map((cat) => (
             <Link key={cat.slug} href={`/categoria/${cat.slug}`} onClick={() => setMenuOpen(false)}>

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getHome } from "@/lib/public-api";
+import { getHome, getTrendingArticles } from "@/lib/public-api";
 import HeroCarousel from "@/components/HeroCarousel";
 import ArticleCard from "@/components/ArticleCard";
 import NewsletterForm from "@/components/NewsletterForm";
@@ -14,7 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const { hero, secondary, feed } = await getHome();
+  const [{ hero, secondary, feed }, trending] = await Promise.all([
+    getHome(),
+    getTrendingArticles(3).catch(() => []),
+  ]);
 
   const categorySections: { slug: string; name: string; big: (typeof feed)[number]; rest: typeof feed }[] = [];
   const seen = new Set<string>();
@@ -27,6 +30,8 @@ export default async function HomePage() {
       categorySections.push({ slug: article.category.slug, name: article.category.name, big: article, rest });
     }
   }
+
+  const top3 = trending.length > 0 ? trending.slice(0, 3) : feed.slice(0, 3);
 
   return (
     <>
@@ -102,16 +107,37 @@ export default async function HomePage() {
           </section>
         ))}
 
-        <section className="brand-section" aria-label="Sobre o Aurora PE">
+        <section className="brand-section" aria-label="Mais lidas do Aurora PE">
           <span className="brand-section__label">Aurora PE</span>
           <h2 className="brand-section__title">Jornalismo que serve a Pernambuco</h2>
           <p className="brand-section__desc">
-            Fundado por jornalistas pernambucanos, o Aurora PE é comprometido com a verdade, a independência
-            editorial e o interesse público.
+            As reportagens e análises mais lidas pelos nossos leitores.
           </p>
-          <Link href="/sobre" className="brand-section__cta">
-            Conheça nossa história
-          </Link>
+
+          {top3.length > 0 && (
+            <div className="trending-box">
+              {top3.map((article, idx) => (
+                <Link key={article.id} href={`/artigo/${article.slug}`} className="trending-item">
+                  <div className="trending-item__rank">{idx + 1}º</div>
+                  {article.featured_image_url ? (
+                    <div className="trending-item__image-wrap">
+                      <Image
+                        src={article.featured_image_url}
+                        alt={article.title}
+                        width={80}
+                        height={60}
+                        className="trending-item__thumb"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="trending-item__content">
+                    {article.chapeu && <span className="trending-item__chapeu">{article.chapeu}</span>}
+                    <h3 className="trending-item__title">{article.title}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
         <AdUnit preset="inline" slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME_INLINE_BOTTOM} />
@@ -152,6 +178,23 @@ export default async function HomePage() {
                 )}
               </article>
             ))}
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
+            <Link
+              href="/ultimas-noticias"
+              className="btn btn--secondary"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.75rem 2rem",
+                fontWeight: 600,
+                fontSize: "1rem",
+              }}
+            >
+              Mais notícias &rarr;
+            </Link>
           </div>
         </section>
       </div>

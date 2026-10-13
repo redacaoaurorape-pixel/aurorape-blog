@@ -156,12 +156,46 @@ export default function ArticleForm({
     syncBody();
   }
 
+  function handleInsertImage() {
+    const url = window.prompt("URL da imagem para inserir no texto:", "https://");
+    if (!url || !url.trim()) return;
+    const alt = window.prompt("Legenda / Descrição da imagem (opcional):", "") ?? "";
+    const html = `<img src="${url.trim()}" alt="${alt.trim()}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 1rem 0;" />`;
+    document.execCommand("insertHTML", false, html);
+    editorRef.current?.focus();
+    syncBody();
+  }
+
+  function handleInsertVideo() {
+    const raw = window.prompt("Cole o link ou código de incorporação do vídeo (YouTube, Vimeo, etc.):", "https://");
+    if (!raw || !raw.trim()) return;
+    let embedUrl = raw.trim();
+
+    // YouTube watch link to embed link
+    const ytMatch = embedUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    if (ytMatch) {
+      embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+    }
+
+    const html = `<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 1.5rem 0; border-radius: 6px;"><iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allowfullscreen></iframe></div>`;
+    document.execCommand("insertHTML", false, html);
+    editorRef.current?.focus();
+    syncBody();
+  }
+
   function validateCommon(): boolean {
     syncBody();
     const titleInput = formRef.current?.querySelector<HTMLInputElement>("#title");
     if (!titleInput?.value.trim()) {
       setStatusWarning("Por favor, preencha o título da matéria.");
       titleInput?.focus();
+      return false;
+    }
+
+    const chapeuSelect = formRef.current?.querySelector<HTMLSelectElement>("#chapeu");
+    if (!chapeuSelect?.value) {
+      setStatusWarning("Por favor, selecione o Chapéu / Editoria da matéria.");
+      chapeuSelect?.focus();
       return false;
     }
 
@@ -179,9 +213,18 @@ export default function ArticleForm({
       return false;
     }
 
+    // Validação de foto obrigatória para imagens adicionadas
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      if (img.url.trim() && !img.photographer.trim()) {
+        setStatusWarning(`Por favor, informe os créditos de "Foto: (obrigatório)" na Imagem ${i + 1}.`);
+        return false;
+      }
+    }
+
     const plainText = editorRef.current?.innerText?.trim() ?? "";
     const htmlText = editorRef.current?.innerHTML ?? "";
-    if (!plainText && !htmlText.includes("<img")) {
+    if (!plainText && !htmlText.includes("<img") && !htmlText.includes("<iframe")) {
       setStatusWarning("Por favor, escreva o corpo da matéria.");
       editorRef.current?.focus();
       return false;
@@ -310,17 +353,26 @@ export default function ArticleForm({
             <div className="card form-section">
               <div className="form-group">
                 <label className="form-label" htmlFor="chapeu">
-                  Chapéu <span className="form-hint">Linha de editoria acima do título (ex: Política, Exclusivo)</span>
+                  Chapéu <span style={{ color: "var(--color-secondary)" }}>*</span>{" "}
+                  <span className="form-hint">Selecione a editoria ou linha acima do título</span>
                 </label>
-                <input
+                <select
                   className="form-control"
-                  type="text"
                   id="chapeu"
                   name="chapeu"
-                  placeholder="Ex: Política"
-                  maxLength={80}
+                  required
                   defaultValue={article?.chapeu ?? ""}
-                />
+                >
+                  <option value="">Selecione a editoria (obrigatório)…</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+                  {article?.chapeu && !categories.some((c) => c.name === article.chapeu) && (
+                    <option value={article.chapeu}>{article.chapeu}</option>
+                  )}
+                </select>
               </div>
 
               <div className="form-group">
@@ -409,6 +461,35 @@ export default function ArticleForm({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="editor-toolbar__btn"
+                  title="Inserir imagem no corpo"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleInsertImage();
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="editor-toolbar__btn"
+                  title="Inserir vídeo (YouTube / Vimeo / link)"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleInsertVideo();
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <polygon points="23 7 16 12 23 17 23 7" />
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                   </svg>
                 </button>
               </div>
@@ -598,18 +679,52 @@ export default function ArticleForm({
                         marginBottom: "0.625rem",
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: "0.7rem",
-                          fontWeight: 700,
-                          color: "var(--color-muted)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        Imagem {index + 1}
-                        {index === 0 ? " (capa)" : ""}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        {img.url && !img.previewError ? (
+                          <img
+                            src={img.url}
+                            alt=""
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 4,
+                              objectFit: "cover",
+                              border: "1px solid var(--color-border)",
+                              flexShrink: 0,
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 4,
+                              background: "var(--color-bg)",
+                              border: "1px dashed var(--color-border)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.65rem",
+                              color: "var(--color-muted)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            📷
+                          </div>
+                        )}
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            color: "var(--color-muted)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Imagem {index + 1}
+                          {index === 0 ? " (capa)" : ""}
+                        </span>
+                      </div>
                       <div style={{ display: "flex", gap: "0.25rem" }}>
                         <button
                           type="button"
@@ -691,10 +806,14 @@ export default function ArticleForm({
                     )}
 
                     <div className="form-group" style={{ marginBottom: "0.625rem" }}>
+                      <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
+                        Foto: (obrigatório) <span style={{ color: "var(--color-secondary)" }}>*</span>
+                      </label>
                       <input
                         className="form-control"
                         type="text"
-                        placeholder="Fotógrafo (opcional)"
+                        placeholder="Nome do fotógrafo ou fonte da imagem"
+                        required={Boolean(img.url.trim())}
                         value={img.photographer}
                         onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
                       />

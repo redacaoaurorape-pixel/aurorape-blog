@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiPost } from "@/lib/api";
 import { getArticle, getRelated } from "@/lib/public-api";
 import { formatDateLong } from "@/lib/format";
 import ArticleCard from "@/components/ArticleCard";
@@ -14,7 +14,12 @@ import NewsletterForm from "@/components/NewsletterForm";
 
 async function loadArticle(slug: string) {
   try {
-    return await getArticle(slug);
+    const article = await getArticle(slug);
+    if (article) {
+      // Fire-and-forget view count tracking in background
+      apiPost(`/articles/${slug}/view`).catch(() => {});
+    }
+    return article;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -79,7 +84,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
             <ShareBar title={article.title} />
 
-            <ArticleImageCarousel images={article.images} />
+            <ArticleImageCarousel
+              images={
+                article.images && article.images.length > 0
+                  ? article.images
+                  : article.featured_image_url
+                  ? [{ id: 0, image_url: article.featured_image_url, photographer: null, sort_order: 0 }]
+                  : []
+              }
+            />
 
             <div
               className="piaui-body"

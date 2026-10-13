@@ -59,6 +59,14 @@ export function search(q: string) {
   return apiGet<ArticleListItem[]>(`/search?q=${encodeURIComponent(q)}`);
 }
 
+export function getTrendingArticles(limit = 3) {
+  return apiGet<ArticleListItem[]>(`/articles/trending?limit=${limit}`, { revalidate: 60 });
+}
+
+export function getArticles(limit = 20) {
+  return apiGet<ArticleListItem[]>(`/articles?limit=${limit}`, { revalidate: 60 });
+}
+
 export function subscribeNewsletter(email: string) {
   return apiPost<NewsletterSubscribeResponse>("/newsletter", { email });
 }

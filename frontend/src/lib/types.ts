@@ -80,6 +80,7 @@ export interface ArticleListItem {
   chapeu?: string | null;
   featured_image_url?: string | null;
   reading_time_min: number;
+  views_count?: number;
   is_published: boolean;
   published_at?: string | null;
   author: AuthorMini;
@@ -140,5 +141,6 @@ export interface DashboardResponse {
   total_articles: number;
   total_published: number;
   total_authors: number;
+  total_views?: number;
   recent: ArticleListItem[];
 }
