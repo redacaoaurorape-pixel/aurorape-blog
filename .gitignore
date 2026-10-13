@@ -18,3 +18,5 @@ htmlcov/
 .coverage
 mangue-skills/
 skills/
+uv.lock
+

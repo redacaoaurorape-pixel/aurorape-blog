@@ -46,6 +46,7 @@ class Article(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     featured_image_url: Mapped[str | None] = mapped_column(String(500))
     reading_time_min: Mapped[int] = mapped_column(Integer, default=1)
+    views_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,12 +48,25 @@ async def articles_list(limit: int = Query(500, le=1000), db: AsyncSession = Dep
     return await article_svc.get_feed(db, limit=limit)
 
 
+@router.get("/articles/trending", response_model=list[ArticleListItem])
+async def articles_trending(limit: int = Query(3, ge=1, le=20), db: AsyncSession = Depends(get_db)):
+    return await article_svc.get_trending_articles(db, limit=limit)
+
+
 @router.get("/articles/{slug}", response_model=ArticleOut)
 async def article_detail(slug: str, db: AsyncSession = Depends(get_db)):
     art = await article_svc.get_article_by_slug(db, slug)
     if not art:
         raise HTTPException(status_code=404, detail="Artigo não encontrado")
     return art
+
+
+@router.post("/articles/{slug}/view", status_code=status.HTTP_204_NO_CONTENT)
+async def increment_article_view(slug: str, db: AsyncSession = Depends(get_db)):
+    success = await article_svc.increment_article_views(db, slug)
+    if not success:
+        raise HTTPException(status_code=404, detail="Artigo não encontrado")
+    return None
 
 
 @router.get("/articles/{slug}/related", response_model=list[ArticleListItem])

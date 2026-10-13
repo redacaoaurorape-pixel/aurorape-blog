@@ -38,6 +38,7 @@ class ArticleListItem(BaseModel):
     chapeu: str | None = None
     featured_image_url: str | None = None
     reading_time_min: int
+    views_count: int = 0
     is_published: bool
     published_at: datetime | None = None
     author: AuthorMini

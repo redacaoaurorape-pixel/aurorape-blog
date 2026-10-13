@@ -56,12 +56,14 @@ async def dashboard(
         await db.execute(select(func.count()).select_from(Article).where(Article.is_published == True))
     ).scalar()
     total_authors = (await db.execute(select(func.count()).select_from(Author))).scalar()
+    total_views = (await db.execute(select(func.coalesce(func.sum(Article.views_count), 0)))).scalar()
     recent = await article_svc.get_feed(db, limit=5)
 
     return {
         "total_articles": total_articles,
         "total_published": total_published,
         "total_authors": total_authors,
+        "total_views": total_views or 0,
         "recent": [ArticleListItem.model_validate(a) for a in recent],
     }
 

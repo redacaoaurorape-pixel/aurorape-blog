@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, or_, and_
+from sqlalchemy import select, func, or_, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -97,6 +97,7 @@ async def search_articles(db: AsyncSession, query: str, limit: int = 8) -> list[
                 Article.title.ilike(q),
                 Article.subtitle.ilike(q),
                 Article.chapeu.ilike(q),
+                Article.body.ilike(q),
             ),
         )
         .options(selectinload(Article.author), selectinload(Article.category))
@@ -104,6 +105,28 @@ async def search_articles(db: AsyncSession, query: str, limit: int = 8) -> list[
         .limit(limit)
     )
     return list(result.scalars().all())
+
+
+async def get_trending_articles(db: AsyncSession, limit: int = 3) -> list[Article]:
+    result = await db.execute(
+        select(Article)
+        .where(Article.is_published == True)
+        .options(selectinload(Article.author), selectinload(Article.category))
+        .order_by(Article.views_count.desc(), Article.published_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def increment_article_views(db: AsyncSession, slug: str) -> bool:
+    stmt = (
+        update(Article)
+        .where(Article.slug == slug)
+        .values(views_count=Article.views_count + 1)
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.rowcount > 0
 
 
 async def get_all_categories(db: AsyncSession) -> list[Category]:

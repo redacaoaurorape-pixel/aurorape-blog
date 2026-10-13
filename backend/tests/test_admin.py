@@ -30,6 +30,7 @@ async def test_admin_dashboard(auth_client, seed_data):
     data = response.json()
     assert data["total_articles"] == 1
     assert data["total_authors"] == 1
+    assert data["total_views"] == 0
 
 
 @pytest.mark.asyncio
@@ -39,6 +40,7 @@ async def test_admin_articles_list(auth_client, seed_data):
     data = response.json()
     assert len(data) == 1
     assert data[0]["title"] == "Primeira matéria de teste"
+    assert data[0]["views_count"] == 0
 
 
 @pytest.mark.asyncio
