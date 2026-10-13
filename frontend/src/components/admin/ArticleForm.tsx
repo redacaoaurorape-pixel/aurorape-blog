@@ -13,6 +13,7 @@ type ImageDraft = {
   uploading: boolean;
   uploadError: string | null;
   previewError: boolean;
+  localPreviewUrl?: string;
 };
 
 let draftKeySeq = 0;
@@ -109,7 +110,13 @@ export default function ArticleForm({
 
   function handleImageFile(key: string, file: File | undefined) {
     if (!file) return;
-    updateImage(key, { uploading: true, uploadError: null });
+    const localUrl = URL.createObjectURL(file);
+    updateImage(key, {
+      localPreviewUrl: localUrl,
+      previewError: false,
+      uploading: true,
+      uploadError: null,
+    });
     const formData = new FormData();
     formData.append("file", file);
     startUploadTransition(async () => {
@@ -117,7 +124,12 @@ export default function ArticleForm({
       if ("error" in result) {
         updateImage(key, { uploading: false, uploadError: result.error });
       } else {
-        updateImage(key, { uploading: false, uploadError: null, url: result.url, previewError: false });
+        updateImage(key, {
+          uploading: false,
+          uploadError: null,
+          url: result.url,
+          previewError: false,
+        });
       }
     });
   }
@@ -216,7 +228,11 @@ export default function ArticleForm({
     // Validação de foto obrigatória para imagens adicionadas
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
-      if (img.url.trim() && !img.photographer.trim()) {
+      if (img.uploading) {
+        setStatusWarning(`A Imagem ${i + 1} ainda está sendo enviada. Aguarde o envio concluir antes de salvar.`);
+        return false;
+      }
+      if ((img.url.trim() || img.localPreviewUrl) && !img.photographer.trim()) {
         setStatusWarning(`Por favor, informe os créditos de "Foto: (obrigatório)" na Imagem ${i + 1}.`);
         return false;
       }
@@ -425,6 +441,278 @@ export default function ArticleForm({
                   defaultValue={article?.subtitle ?? ""}
                 />
               </div>
+            </div>
+
+            {/* Imagens da Matéria - Centralizado entre o subtítulo e o corpo da matéria */}
+            <div className="card form-section">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.875rem" }}>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      color: "var(--color-text)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      margin: 0,
+                    }}
+                  >
+                    Imagens da matéria
+                  </h3>
+                  <p className="form-hint" style={{ margin: "0.25rem 0 0 0" }}>
+                    A primeira imagem vira a capa da matéria. Adicione fotos adicionais para o carrossel.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem", whiteSpace: "nowrap" }}
+                  onClick={addImage}
+                >
+                  + Adicionar imagem
+                </button>
+              </div>
+
+              {images.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {images.map((img, index) => {
+                    const displaySrc = img.localPreviewUrl || img.url;
+                    return (
+                      <div
+                        key={img.key}
+                        style={{
+                          border: "1px solid var(--color-border)",
+                          borderRadius: 8,
+                          padding: "1rem",
+                          background: index === 0 ? "rgba(245, 166, 35, 0.03)" : "#fff",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "0.875rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                            {displaySrc && !img.previewError ? (
+                              <img
+                                src={displaySrc}
+                                alt=""
+                                style={{
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 6,
+                                  objectFit: "cover",
+                                  border: "1px solid var(--color-border)",
+                                  flexShrink: 0,
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: 6,
+                                  background: "var(--color-bg)",
+                                  border: "1px dashed var(--color-border)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.9rem",
+                                  color: "var(--color-muted)",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                📷
+                              </div>
+                            )}
+                            <div>
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  fontWeight: 700,
+                                  color: index === 0 ? "var(--color-secondary)" : "var(--color-muted)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                {index === 0 ? "Imagem 1 (Capa principal)" : `Imagem ${index + 1}`}
+                              </span>
+                              {displaySrc && (
+                                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-muted)" }}>
+                                  {img.localPreviewUrl ? "Arquivo local selecionado" : "Link da imagem configurado"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title="Mover para cima"
+                              disabled={index === 0}
+                              onClick={() => moveImage(img.key, -1)}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              title="Mover para baixo"
+                              disabled={index === images.length - 1}
+                              onClick={() => moveImage(img.key, 1)}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-icon btn-icon--danger"
+                              title="Remover imagem"
+                              onClick={() => removeImage(img.key)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                          <button
+                            type="button"
+                            className={img.mode === "url" ? "btn-secondary" : "btn-icon"}
+                            style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
+                            onClick={() => updateImage(img.key, { mode: "url" })}
+                          >
+                            Colar URL
+                          </button>
+                          <button
+                            type="button"
+                            className={img.mode === "upload" ? "btn-secondary" : "btn-icon"}
+                            style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
+                            onClick={() => updateImage(img.key, { mode: "upload" })}
+                          >
+                            Enviar arquivo
+                          </button>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                          {img.mode === "url" ? (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
+                                Link da imagem:
+                              </label>
+                              <input
+                                className="form-control"
+                                type="url"
+                                placeholder="https://…"
+                                value={img.url}
+                                onChange={(e) => updateImage(img.key, { url: e.target.value, localPreviewUrl: undefined, previewError: false })}
+                              />
+                            </div>
+                          ) : (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
+                                Selecionar do computador:
+                              </label>
+                              <input
+                                className="form-control"
+                                type="file"
+                                accept="image/*"
+                                disabled={img.uploading}
+                                onChange={(e) => handleImageFile(img.key, e.target.files?.[0])}
+                              />
+                              {img.uploading && <p className="form-hint" style={{ marginTop: "0.25rem" }}>Enviando imagem…</p>}
+                              {img.uploadError && (
+                                <p style={{ color: "var(--color-secondary)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                                  {img.uploadError}
+                                </p>
+                              )}
+                              {!img.uploading && !img.uploadError && img.url && (
+                                <p className="form-hint" style={{ marginTop: "0.25rem", color: "var(--color-primary)" }}>
+                                  ✓ Upload concluído com sucesso.
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
+                              Foto: (obrigatório) <span style={{ color: "var(--color-secondary)" }}>*</span>
+                            </label>
+                            <input
+                              className="form-control"
+                              type="text"
+                              placeholder="Nome do fotógrafo ou fonte da imagem"
+                              required={Boolean(displaySrc?.trim())}
+                              value={img.photographer}
+                              onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Pré-visualização da imagem selecionada */}
+                        {displaySrc && (
+                          <div
+                            style={{
+                              marginTop: "0.75rem",
+                              borderRadius: 6,
+                              overflow: "hidden",
+                              border: "1px solid var(--color-border)",
+                              background: "var(--color-bg)",
+                              textAlign: "center",
+                            }}
+                          >
+                            {!img.previewError ? (
+                              <img
+                                src={displaySrc}
+                                alt={`Pré-visualização da imagem ${index + 1}`}
+                                style={{
+                                  width: "100%",
+                                  maxHeight: "300px",
+                                  objectFit: "contain",
+                                  display: "block",
+                                  background: "#1a1a1a",
+                                }}
+                                onError={() => {
+                                  if (!img.localPreviewUrl) {
+                                    updateImage(img.key, { previewError: true });
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  padding: "1rem",
+                                  color: "var(--color-secondary)",
+                                  fontSize: "0.8rem",
+                                }}
+                              >
+                                Imagem inacessível ou link inválido. Verifique se o endereço é público e direto.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: "1.25rem",
+                    border: "1.5px dashed var(--color-border)",
+                    borderRadius: 8,
+                    textAlign: "center",
+                    color: "var(--color-muted)",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  Nenhuma imagem adicionada ainda. Clique em "+ Adicionar imagem" para incluir a capa e carrossel.
+                </div>
+              )}
+
+              <input type="hidden" name="images_json" value={imagesJsonValue} readOnly />
             </div>
 
             <div className="card form-section" style={{ padding: 0, overflow: "hidden" }}>
@@ -648,221 +936,7 @@ export default function ArticleForm({
               </div>
             </div>
 
-            <div className="card form-section">
-              <h3
-                style={{
-                  fontSize: "0.8rem",
-                  fontWeight: 700,
-                  marginBottom: "0.5rem",
-                  color: "var(--color-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.07em",
-                }}
-              >
-                Imagens
-              </h3>
-              <p className="form-hint" style={{ marginBottom: "0.875rem" }}>
-                A primeira imagem da lista vira a capa da matéria. Nenhuma imagem é obrigatória.
-              </p>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                {images.map((img, index) => (
-                  <div
-                    key={img.key}
-                    style={{ border: "1px solid var(--color-border)", borderRadius: 6, padding: "0.75rem" }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "0.625rem",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        {img.url && !img.previewError ? (
-                          <img
-                            src={img.url}
-                            alt=""
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 4,
-                              objectFit: "cover",
-                              border: "1px solid var(--color-border)",
-                              flexShrink: 0,
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 4,
-                              background: "var(--color-bg)",
-                              border: "1px dashed var(--color-border)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "0.65rem",
-                              color: "var(--color-muted)",
-                              flexShrink: 0,
-                            }}
-                          >
-                            📷
-                          </div>
-                        )}
-                        <span
-                          style={{
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            color: "var(--color-muted)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                          }}
-                        >
-                          Imagem {index + 1}
-                          {index === 0 ? " (capa)" : ""}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", gap: "0.25rem" }}>
-                        <button
-                          type="button"
-                          className="btn-icon"
-                          title="Mover para cima"
-                          disabled={index === 0}
-                          onClick={() => moveImage(img.key, -1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-icon"
-                          title="Mover para baixo"
-                          disabled={index === images.length - 1}
-                          onClick={() => moveImage(img.key, 1)}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-icon btn-icon--danger"
-                          title="Remover imagem"
-                          onClick={() => removeImage(img.key)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem" }}>
-                      <button
-                        type="button"
-                        className={img.mode === "url" ? "btn-secondary" : "btn-icon"}
-                        style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
-                        onClick={() => updateImage(img.key, { mode: "url" })}
-                      >
-                        Colar URL
-                      </button>
-                      <button
-                        type="button"
-                        className={img.mode === "upload" ? "btn-secondary" : "btn-icon"}
-                        style={{ fontSize: "0.75rem", padding: "0.3rem 0.75rem", width: "auto", height: "auto" }}
-                        onClick={() => updateImage(img.key, { mode: "upload" })}
-                      >
-                        Enviar arquivo
-                      </button>
-                    </div>
-
-                    {img.mode === "url" ? (
-                      <div className="form-group" style={{ marginBottom: "0.625rem" }}>
-                        <input
-                          className="form-control"
-                          type="url"
-                          placeholder="https://…"
-                          value={img.url}
-                          onChange={(e) => updateImage(img.key, { url: e.target.value, previewError: false })}
-                        />
-                      </div>
-                    ) : (
-                      <div className="form-group" style={{ marginBottom: "0.625rem" }}>
-                        <input
-                          className="form-control"
-                          type="file"
-                          accept="image/*"
-                          disabled={img.uploading}
-                          onChange={(e) => handleImageFile(img.key, e.target.files?.[0])}
-                        />
-                        {img.uploading && <p className="form-hint">Enviando…</p>}
-                        {img.uploadError && (
-                          <p style={{ color: "var(--color-secondary)", fontSize: "0.75rem", marginTop: "0.375rem" }}>
-                            {img.uploadError}
-                          </p>
-                        )}
-                        {!img.uploading && !img.uploadError && img.url && (
-                          <p className="form-hint">Arquivo enviado.</p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="form-group" style={{ marginBottom: "0.625rem" }}>
-                      <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
-                        Foto: (obrigatório) <span style={{ color: "var(--color-secondary)" }}>*</span>
-                      </label>
-                      <input
-                        className="form-control"
-                        type="text"
-                        placeholder="Nome do fotógrafo ou fonte da imagem"
-                        required={Boolean(img.url.trim())}
-                        value={img.photographer}
-                        onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
-                      />
-                    </div>
-
-                    <div className={`img-preview${img.url && !img.previewError ? " has-img" : ""}`}>
-                      {img.url && !img.previewError && (
-                        <img
-                          src={img.url}
-                          alt={`Pré-visualização da imagem ${index + 1}`}
-                          onError={() => updateImage(img.key, { previewError: true })}
-                        />
-                      )}
-                      {img.url && img.previewError && (
-                        <div
-                          style={{
-                            padding: "1rem",
-                            textAlign: "center",
-                            color: "var(--color-secondary)",
-                            fontSize: "0.8rem",
-                          }}
-                        >
-                          Imagem inacessível ou link inválido. Verifique se o endereço é público e direto.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {images.length === 0 && (
-                  <p className="form-hint" style={{ margin: 0 }}>
-                    Nenhuma imagem adicionada ainda.
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ width: "100%", marginTop: "1rem" }}
-                onClick={addImage}
-              >
-                + Adicionar imagem
-              </button>
-
-              <input type="hidden" name="images_json" value={imagesJsonValue} readOnly />
-            </div>
-
-            {/* Ações abaixo da URL da Imagem */}
+            {/* Ações de Salvar / Publicar */}
             <div className="form-actions">
               {mode === "edit" ? (
                 <>
