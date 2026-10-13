@@ -56,6 +56,21 @@ export default function ArticleForm({
   const [slug, setSlug] = useState(article?.slug ?? "");
   const slugEdited = useRef(Boolean(article?.slug));
 
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(() => {
+    if (article?.category?.id) return String(article.category.id);
+    if (article?.chapeu) {
+      const match = categories.find((c) => c.name.toLowerCase() === article.chapeu?.toLowerCase());
+      if (match) return String(match.id);
+    }
+    return "";
+  });
+
+  const [chapeuValue, setChapeuValue] = useState<string>(() => {
+    if (article?.chapeu) return article.chapeu;
+    if (article?.category?.name) return article.category.name;
+    return "";
+  });
+
   const [images, setImages] = useState<ImageDraft[]>(() =>
     (article?.images ?? []).map((img) => ({
       key: makeDraftKey(),
@@ -204,16 +219,9 @@ export default function ArticleForm({
       return false;
     }
 
-    const chapeuSelect = formRef.current?.querySelector<HTMLSelectElement>("#chapeu");
-    if (!chapeuSelect?.value) {
-      setStatusWarning("Por favor, selecione o Chapéu / Editoria da matéria.");
-      chapeuSelect?.focus();
-      return false;
-    }
-
     const categorySelect = formRef.current?.querySelector<HTMLSelectElement>("#category_id");
     if (!categorySelect?.value) {
-      setStatusWarning("Por favor, selecione uma categoria.");
+      setStatusWarning("Por favor, selecione o Chapéu / Editoria da matéria.");
       categorySelect?.focus();
       return false;
     }
@@ -368,27 +376,31 @@ export default function ArticleForm({
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             <div className="card form-section">
               <div className="form-group">
-                <label className="form-label" htmlFor="chapeu">
-                  Chapéu <span style={{ color: "var(--color-secondary)" }}>*</span>{" "}
-                  <span className="form-hint">Selecione a editoria ou linha acima do título</span>
+                <label className="form-label" htmlFor="category_id">
+                  Chapéu / Editoria <span style={{ color: "var(--color-secondary)" }}>*</span>{" "}
+                  <span className="form-hint">Selecione a editoria que aparecerá como chapéu acima do título</span>
                 </label>
                 <select
                   className="form-control"
-                  id="chapeu"
-                  name="chapeu"
+                  id="category_id"
+                  name="category_id"
                   required
-                  defaultValue={article?.chapeu ?? ""}
+                  value={selectedCategoryId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setSelectedCategoryId(id);
+                    const found = categories.find((c) => String(c.id) === id);
+                    setChapeuValue(found ? found.name : "");
+                  }}
                 >
                   <option value="">Selecione a editoria (obrigatório)…</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.name}>
+                    <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
                   ))}
-                  {article?.chapeu && !categories.some((c) => c.name === article.chapeu) && (
-                    <option value={article.chapeu}>{article.chapeu}</option>
-                  )}
                 </select>
+                <input type="hidden" id="chapeu" name="chapeu" value={chapeuValue} />
               </div>
 
               <div className="form-group">
@@ -891,19 +903,6 @@ export default function ArticleForm({
               >
                 Metadados
               </h3>
-              <div className="form-group">
-                <label className="form-label" htmlFor="category_id">
-                  Categoria <span style={{ color: "var(--color-secondary)" }}>*</span>
-                </label>
-                <select className="form-control" id="category_id" name="category_id" required defaultValue={article?.category.id ?? ""}>
-                  <option value="">Selecione…</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <div className="form-group">
                 <label className="form-label" htmlFor="author_id">
@@ -937,25 +936,64 @@ export default function ArticleForm({
             </div>
 
             {/* Ações de Salvar / Publicar */}
-            <div className="form-actions">
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", width: "100%" }}>
               {mode === "edit" ? (
                 <>
+                  <a
+                    href="/admin"
+                    className="btn-secondary"
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 500,
+                      fontSize: "0.875rem",
+                      textAlign: "center",
+                      textDecoration: "none",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    Cancelar
+                  </a>
                   <button
                     type="button"
                     onClick={handleSaveEditClick}
                     disabled={isSubmitting}
                     className="btn-primary"
-                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      boxSizing: "border-box",
+                    }}
                   >
                     {isSubmitting && submitIntent === "save_edit" ? "Salvando…" : "Salvar alterações"}
                   </button>
-                  <a href="/admin" className="btn-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.8 }}>
-                    Cancelar
-                  </a>
                 </>
               ) : (
                 <>
-                  <a href="/admin" className="btn-secondary" style={{ width: "100%", textAlign: "center", opacity: 0.8 }}>
+                  <a
+                    href="/admin"
+                    className="btn-secondary"
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 500,
+                      fontSize: "0.875rem",
+                      textAlign: "center",
+                      textDecoration: "none",
+                      boxSizing: "border-box",
+                    }}
+                  >
                     Cancelar
                   </a>
                   <button
@@ -963,7 +1001,16 @@ export default function ArticleForm({
                     onClick={handleSaveDraftClick}
                     disabled={isSubmitting}
                     className="btn-secondary"
-                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      boxSizing: "border-box",
+                    }}
                   >
                     {isSubmitting && submitIntent === "save_draft" ? "Salvando…" : "Salvar como rascunho"}
                   </button>
@@ -972,7 +1019,16 @@ export default function ArticleForm({
                     onClick={handlePublishClick}
                     disabled={isSubmitting}
                     className="btn-primary"
-                    style={{ width: "100%", fontWeight: 600, padding: "0.625rem 1rem", textAlign: "center" }}
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      boxSizing: "border-box",
+                    }}
                   >
                     {isSubmitting && submitIntent === "publish" ? "Publicando…" : "Publicar"}
                   </button>
