@@ -513,6 +513,7 @@ export default function ArticleForm({
                               <img
                                 src={displaySrc}
                                 alt=""
+                                referrerPolicy="no-referrer"
                                 style={{
                                   width: 44,
                                   height: 44,
@@ -691,7 +692,6 @@ export default function ArticleForm({
                                 src={displaySrc.trim()}
                                 alt={`Pré-visualização da imagem ${index + 1}`}
                                 referrerPolicy="no-referrer"
-                                crossOrigin="anonymous"
                                 style={{
                                   width: "100%",
                                   maxHeight: "300px",

@@ -34,10 +34,10 @@ export function normalizeImageUrl(url?: string | null): string {
   const trimmed = url.trim();
   // shortcut: regex parses common Google Drive share links; upgrade to official Google Drive API if private links are needed
   const match = trimmed.match(
-    /(?:(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc|thumbnail)\?(?:[^&]+&)*id=)|drive\.usercontent\.google\.com\/download\?(?:[^&]+&)*id=)([a-zA-Z0-9_-]+)/
+    /(?:(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc|thumbnail)\?(?:[^&]+&)*id=)|drive\.usercontent\.google\.com\/download\?(?:[^&]+&)*id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/
   );
   if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
   return trimmed;
 }

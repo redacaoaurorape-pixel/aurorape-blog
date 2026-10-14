@@ -67,6 +67,7 @@ export default function ArticleImageCarousel({ images }: { images: ArticleImageO
                 src={normalizeImageUrl(img.image_url)}
                 alt={img.photographer ? `Foto: ${img.photographer}` : `Imagem ${i + 1} da matéria`}
                 loading={i === 0 ? "eager" : "lazy"}
+                referrerPolicy="no-referrer"
               />
             </div>
           ))}
