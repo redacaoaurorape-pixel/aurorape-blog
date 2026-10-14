@@ -664,7 +664,7 @@ export default function ArticleForm({
                         </div>
 
                         {/* Pré-visualização da imagem selecionada */}
-                        {displaySrc && (
+                        {displaySrc && displaySrc.trim() && (
                           <div
                             style={{
                               marginTop: "0.75rem",
@@ -677,8 +677,11 @@ export default function ArticleForm({
                           >
                             {!img.previewError ? (
                               <img
-                                src={displaySrc}
+                                key={displaySrc.trim()}
+                                src={displaySrc.trim()}
                                 alt={`Pré-visualização da imagem ${index + 1}`}
+                                referrerPolicy="no-referrer"
+                                crossOrigin="anonymous"
                                 style={{
                                   width: "100%",
                                   maxHeight: "300px",
@@ -698,9 +701,21 @@ export default function ArticleForm({
                                   padding: "1rem",
                                   color: "var(--color-secondary)",
                                   fontSize: "0.8rem",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
                                 }}
                               >
-                                Imagem inacessível ou link inválido. Verifique se o endereço é público e direto.
+                                <span>Imagem inacessível ou link com bloqueio de acesso (hotlink). Verifique se o endereço é direto para o arquivo de imagem (.jpg, .png, .webp).</span>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  style={{ fontSize: "0.75rem", padding: "0.25rem 0.5rem", width: "auto" }}
+                                  onClick={() => updateImage(img.key, { previewError: false })}
+                                >
+                                  Tentar carregar novamente
+                                </button>
                               </div>
                             )}
                           </div>

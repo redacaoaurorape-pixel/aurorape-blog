@@ -83,15 +83,25 @@ export async function uploadArticleImageAction(
 export async function createArticleAction(formData: FormData) {
   const token = await requireAdminToken();
   const payload = parseArticleForm(formData);
-  await createArticle(token, payload);
+  const created = await createArticle(token, payload);
   revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/ultimas-noticias");
+  if (created?.slug) {
+    revalidatePath(`/artigo/${created.slug}`);
+  }
   redirect("/admin");
 }
 
 export async function updateArticleAction(id: number | string, formData: FormData) {
   const token = await requireAdminToken();
   const payload = parseArticleForm(formData);
-  await updateArticle(token, id, payload);
+  const updated = await updateArticle(token, id, payload);
   revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath("/ultimas-noticias");
+  if (updated?.slug) {
+    revalidatePath(`/artigo/${updated.slug}`);
+  }
   redirect("/admin");
 }
