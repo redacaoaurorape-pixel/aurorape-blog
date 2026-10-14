@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.schemas.author import AuthorMini
 from app.schemas.category import CategoryOut
+from app.services.text import normalize_image_url
 
 
 class TagOut(BaseModel):
@@ -18,6 +19,11 @@ class ArticleImageIn(BaseModel):
     url: str
     photographer: str | None = None
 
+    @field_validator("url", mode="before")
+    @classmethod
+    def _normalize_url(cls, v: str) -> str:
+        return normalize_image_url(v) or v
+
 
 class ArticleImageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -26,6 +32,11 @@ class ArticleImageOut(BaseModel):
     image_url: str
     photographer: str | None = None
     sort_order: int
+
+    @field_validator("image_url", mode="before")
+    @classmethod
+    def _normalize_image_url(cls, v: str) -> str:
+        return normalize_image_url(v) or v
 
 
 class ArticleListItem(BaseModel):
@@ -43,6 +54,11 @@ class ArticleListItem(BaseModel):
     published_at: datetime | None = None
     author: AuthorMini
     category: CategoryOut
+
+    @field_validator("featured_image_url", mode="before")
+    @classmethod
+    def _normalize_featured_image(cls, v: str | None) -> str | None:
+        return normalize_image_url(v)
 
 
 class ArticleOut(ArticleListItem):

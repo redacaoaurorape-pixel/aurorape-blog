@@ -38,4 +38,24 @@ def calculate_reading_time(html_body: str, words_per_minute: int = 200) -> int:
 
 
 def sanitize_html(html: str) -> str:
-    return bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+    cleaned = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
+    # shortcut: regex replacement covers standard src attributes, enough until an AST parser is needed
+    return re.sub(
+        r'(<img\s+[^>]*src=["\'])([^"\']+)(["\'][^>]*>)',
+        lambda m: f"{m.group(1)}{normalize_image_url(m.group(2))}{m.group(3)}",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+
+
+def normalize_image_url(url: str | None) -> str | None:
+    if not url:
+        return url
+    # shortcut: regex parses common Google Drive share links; upgrade to official Google Drive API if private links are needed
+    match = re.search(
+        r"(?:(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc|thumbnail)\?(?:[^&]+&)*id=)|drive\.usercontent\.google\.com\/download\?(?:[^&]+&)*id=)([a-zA-Z0-9_-]+)",
+        url,
+    )
+    if match:
+        return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w1600"
+    return url

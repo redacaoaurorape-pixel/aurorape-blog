@@ -89,6 +89,32 @@ async def test_admin_article_create_with_images(auth_client, seed_data):
 
 
 @pytest.mark.asyncio
+async def test_admin_article_create_with_google_drive_images(auth_client, seed_data):
+    payload = {
+        "title": "Matéria com Link do Drive",
+        "slug": "materia-com-link-do-drive",
+        "body": '<p>Texto com imagem <img src="https://drive.google.com/file/d/driveFile123/view?usp=sharing" alt="legenda"></p>',
+        "author_id": seed_data["author"].id,
+        "category_id": seed_data["category"].id,
+        "is_published": True,
+        "images": [
+            {
+                "url": "https://drive.google.com/file/d/drivePhoto456/view?usp=sharing",
+                "photographer": "Google Drive User",
+            }
+        ],
+    }
+    response = await auth_client.post("/api/v1/admin/articles", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+
+    expected_url = "https://drive.google.com/thumbnail?id=drivePhoto456&sz=w1600"
+    assert data["featured_image_url"] == expected_url
+    assert data["images"][0]["image_url"] == expected_url
+    assert "https://drive.google.com/thumbnail?id=driveFile123&sz=w1600" in data["body"]
+
+
+@pytest.mark.asyncio
 async def test_admin_article_create_without_images(auth_client, seed_data):
     payload = {
         "title": "Matéria sem Imagens",
