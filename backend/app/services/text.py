@@ -7,6 +7,7 @@ from sqlalchemy import select
 ALLOWED_TAGS = [
     "p", "h2", "h3", "h4", "strong", "em", "b", "i", "u",
     "a", "ul", "ol", "li", "blockquote", "br", "img",
+    "figure", "figcaption",
 ]
 ALLOWED_ATTRS = {"a": ["href", "title", "rel", "target"], "img": ["src", "alt"]}
 
