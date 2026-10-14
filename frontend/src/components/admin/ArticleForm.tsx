@@ -14,6 +14,7 @@ type ImageDraft = {
   uploadError: string | null;
   previewError: boolean;
   localPreviewUrl?: string;
+  file?: File;
 };
 
 let draftKeySeq = 0;
@@ -127,6 +128,7 @@ export default function ArticleForm({
     if (!file) return;
     const localUrl = URL.createObjectURL(file);
     updateImage(key, {
+      file,
       localPreviewUrl: localUrl,
       previewError: false,
       uploading: true,
@@ -234,18 +236,8 @@ export default function ArticleForm({
       return false;
     }
 
-    // Validação de foto obrigatória para imagens adicionadas
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
-      if (img.uploading) {
-        setStatusWarning(`A Imagem ${i + 1} ainda está sendo enviada. Aguarde o envio concluir antes de salvar.`);
-        return false;
-      }
-      if ((img.url.trim() || img.localPreviewUrl) && !img.photographer.trim()) {
-        setStatusWarning(`Por favor, informe os créditos de "Foto: (obrigatório)" na Imagem ${i + 1}.`);
-        return false;
-      }
-    }
+    // Validação de fotos: não bloqueia o salvamento caso haja upload pendente ou com erro.
+    // Imagens válidas são salvas no banco; pendentes/com erro são mantidas com aviso no cartão.
 
     const plainText = editorRef.current?.innerText?.trim() ?? "";
     const htmlText = editorRef.current?.innerHTML ?? "";
@@ -645,11 +637,38 @@ export default function ArticleForm({
                                 disabled={img.uploading}
                                 onChange={(e) => handleImageFile(img.key, e.target.files?.[0])}
                               />
-                              {img.uploading && <p className="form-hint" style={{ marginTop: "0.25rem" }}>Enviando imagem…</p>}
-                              {img.uploadError && (
-                                <p style={{ color: "var(--color-secondary)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
-                                  {img.uploadError}
+                              {img.uploading && (
+                                <p className="form-hint" style={{ marginTop: "0.25rem", color: "#d97706" }}>
+                                  ⏳ Enviando imagem… Você pode continuar editando ou salvar o artigo mesmo assim.
                                 </p>
+                              )}
+                              {img.uploadError && (
+                                <div
+                                  style={{
+                                    marginTop: "0.5rem",
+                                    padding: "0.5rem 0.75rem",
+                                    background: "rgba(239, 68, 68, 0.08)",
+                                    borderRadius: 6,
+                                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                                  }}
+                                >
+                                  <p style={{ color: "var(--color-secondary)", fontSize: "0.75rem", margin: 0, fontWeight: 600 }}>
+                                    ⚠️ Falha no upload: {img.uploadError}
+                                  </p>
+                                  <p style={{ color: "var(--color-muted)", fontSize: "0.7rem", margin: "0.25rem 0 0.5rem 0" }}>
+                                    O salvamento do artigo não foi bloqueado. Se você salvar agora, as outras fotos serão preservadas e esta será ignorada até o upload ser concluído.
+                                  </p>
+                                  {img.file && (
+                                    <button
+                                      type="button"
+                                      className="btn-secondary"
+                                      style={{ fontSize: "0.7rem", padding: "0.25rem 0.6rem" }}
+                                      onClick={() => handleImageFile(img.key, img.file)}
+                                    >
+                                      Tentar upload novamente
+                                    </button>
+                                  )}
+                                </div>
                               )}
                               {!img.uploading && !img.uploadError && img.url && (
                                 <p className="form-hint" style={{ marginTop: "0.25rem", color: "var(--color-primary)" }}>
@@ -661,13 +680,12 @@ export default function ArticleForm({
 
                           <div className="form-group" style={{ marginBottom: 0 }}>
                             <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
-                              Foto: (obrigatório) <span style={{ color: "var(--color-secondary)" }}>*</span>
+                              Foto: (crédito)
                             </label>
                             <input
                               className="form-control"
                               type="text"
                               placeholder="Nome do fotógrafo ou fonte da imagem"
-                              required={Boolean(displaySrc?.trim())}
                               value={img.photographer}
                               onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
                             />
