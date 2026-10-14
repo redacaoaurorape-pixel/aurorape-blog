@@ -1257,6 +1257,9 @@ textarea.form-control { min-height: 100px; resize: vertical; }
 .rich-editor ul, .rich-editor ol { padding-left: 1.5rem; margin-bottom: 1rem; }
 .rich-editor a { color: var(--color-secondary); text-decoration: underline; }
 .rich-editor img { max-width: 100%; margin-block: 1rem; border-radius: 4px; }
+.rich-editor figure { margin: 1.25rem 0; text-align: center; }
+.rich-editor figure img { max-width: 100%; margin: 0 auto; border-radius: 4px; display: block; }
+.rich-editor figcaption { font-size: 0.8rem; color: var(--color-muted); font-style: italic; margin-top: 0.35rem; }
 .rich-editor pre { background: #1e1e2e; color: #cdd6f4; padding: 1rem; border-radius: 6px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.875rem; }
 .rich-editor.is-empty::before { content: attr(data-placeholder); color: var(--color-muted); pointer-events: none; position: absolute; }
 
@@ -2916,6 +2919,9 @@ textarea.form-control { min-height: 100px; resize: vertical; }
 
 .piaui-body a { color: var(--color-secondary); text-decoration: underline; }
 .piaui-body img { max-width: 100%; border: none; margin-block: 2rem; }
+.piaui-body figure { margin: 2.25rem 0; text-align: center; }
+.piaui-body figure img { max-width: 100%; height: auto; border: none; margin: 0 auto; display: block; border-radius: 4px; }
+.piaui-body figcaption { font-size: 0.85rem; color: var(--color-muted); font-style: italic; margin-top: 0.5rem; line-height: 1.4; text-align: center; }
 .piaui-body ul, .piaui-body ol { padding-left: 1.5rem; margin-bottom: 1.75rem; }
 .piaui-body li { margin-bottom: 0.5rem; }
 

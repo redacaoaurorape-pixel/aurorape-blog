@@ -189,8 +189,26 @@ export default function ArticleForm({
     const url = window.prompt("URL da imagem para inserir no texto:", "https://");
     if (!url || !url.trim()) return;
     const cleanUrl = normalizeImageUrl(url.trim());
+    const photographer = window.prompt("Foto: (crédito do fotógrafo ou fonte da imagem):", "") ?? "";
     const alt = window.prompt("Legenda / Descrição da imagem (opcional):", "") ?? "";
-    const html = `<img src="${cleanUrl}" alt="${alt.trim()}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 1rem 0;" />`;
+
+    const cleanPhotographer = photographer.trim();
+    const cleanAlt = alt.trim();
+
+    let caption = "";
+    if (cleanAlt && cleanPhotographer) {
+      caption = `${cleanAlt} (Foto: ${cleanPhotographer})`;
+    } else if (cleanPhotographer) {
+      caption = `Foto: ${cleanPhotographer}`;
+    } else if (cleanAlt) {
+      caption = cleanAlt;
+    }
+
+    const imgAlt = cleanAlt || (cleanPhotographer ? `Foto: ${cleanPhotographer}` : "");
+    const html = caption
+      ? `<figure><img src="${cleanUrl}" alt="${imgAlt}" /><figcaption>${caption}</figcaption></figure><p><br></p>`
+      : `<p><img src="${cleanUrl}" alt="${imgAlt}" /></p><p><br></p>`;
+
     document.execCommand("insertHTML", false, html);
     editorRef.current?.focus();
     syncBody();
