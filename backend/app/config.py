@@ -1,6 +1,9 @@
 import os
+from pathlib import Path
 import sys
 from decouple import config
+
+UPLOAD_DIR: Path = Path(__file__).resolve().parent.parent / "uploads"
 
 TESTING: bool = config("TESTING", cast=bool, default=("pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ))
 

@@ -19,4 +19,7 @@ htmlcov/
 mangue-skills/
 skills/
 uv.lock
+uploads/
+**/uploads/*
+!**/uploads/.gitkeep
 

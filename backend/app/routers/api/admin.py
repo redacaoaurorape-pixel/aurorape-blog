@@ -250,6 +250,11 @@ async def upload_image(
         url = await upload_file(key=key, content=contents, content_type=file.content_type)
     except StorageNotConfiguredError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Upload não configurado")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao salvar arquivo: {exc}",
+        )
 
     return {"url": url}
 

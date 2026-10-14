@@ -29,11 +29,25 @@ def _put_object(key: str, content: bytes, content_type: str) -> None:
     )
 
 
+def _save_local_file(key: str, content: bytes) -> str:
+    clean_key = key.lstrip("/\\")
+    file_path = config.UPLOAD_DIR / clean_key
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_bytes(content)
+
+    base = (config.SITE_URL or "").rstrip("/")
+    if base:
+        return f"{base}/uploads/{clean_key}"
+    return f"/uploads/{clean_key}"
+
+
 async def upload_file(key: str, content: bytes, content_type: str) -> str:
-    if not config.BUCKET_ENDPOINT_URL:
-        raise StorageNotConfiguredError("BUCKET_ENDPOINT_URL não está configurada")
+    if config.BUCKET_ENDPOINT_URL:
+        await run_in_threadpool(_put_object, key, content, content_type)
+        base = config.BUCKET_PUBLIC_URL_BASE.rstrip("/") if config.BUCKET_PUBLIC_URL_BASE else ""
+        if not base and config.BUCKET_NAME:
+            base = f"{config.BUCKET_ENDPOINT_URL.rstrip('/')}/{config.BUCKET_NAME}"
+        return f"{base}/{key}"
 
-    await run_in_threadpool(_put_object, key, content, content_type)
-
-    base = config.BUCKET_PUBLIC_URL_BASE.rstrip("/")
-    return f"{base}/{key}"
+    # Fallback gracioso: salva em disco local e serve via /uploads
+    return await run_in_threadpool(_save_local_file, key, content)

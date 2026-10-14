@@ -4,8 +4,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from app.config import CORS_ORIGINS, DEBUG, MOCK_MODE
+from app.config import CORS_ORIGINS, DEBUG, MOCK_MODE, UPLOAD_DIR
 from app.database import engine
 from app.mock_seed import seed_mock_data
 from app.models import *  # noqa: F401,F403 — garante registro dos modelos
@@ -59,6 +60,10 @@ async def add_security_headers(request: Request, call_next):
 
 app.include_router(public_api_router)
 app.include_router(admin_api_router)
+
+# Servir uploads locais quando BUCKET_ENDPOINT_URL não estiver configurado
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.exception_handler(404)

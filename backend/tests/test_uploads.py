@@ -71,3 +71,22 @@ async def test_upload_not_configured(auth_client, seed_data, monkeypatch):
     )
     assert response.status_code == 500
     assert response.json()["detail"] == "Upload não configurado"
+
+
+@pytest.mark.asyncio
+async def test_upload_local_fallback(auth_client, seed_data, monkeypatch):
+    monkeypatch.setattr("app.config.BUCKET_ENDPOINT_URL", "")
+
+    response = await auth_client.post(
+        "/api/v1/admin/uploads",
+        files={"file": ("foto.jpg", b"fake-local-image-bytes", "image/jpeg")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "/uploads/articles/" in data["url"]
+    assert data["url"].endswith(".jpg")
+
+    url_path = data["url"].split("/uploads/", 1)[1]
+    static_resp = await auth_client.get(f"/uploads/{url_path}")
+    assert static_resp.status_code == 200
+    assert static_resp.content == b"fake-local-image-bytes"
