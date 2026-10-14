@@ -99,7 +99,7 @@ async def test_admin_article_create_with_google_drive_images(auth_client, seed_d
         "is_published": True,
         "images": [
             {
-                "url": "https://drive.google.com/file/d/drivePhoto456/view?usp=sharing",
+                "url": "https://drive.google.com/file/d/1gqJIWKNyWLR1szLpU5XUpYAGygSPJs7V/view?usp=sharing",
                 "photographer": "Google Drive User",
             }
         ],
@@ -108,10 +108,10 @@ async def test_admin_article_create_with_google_drive_images(auth_client, seed_d
     assert response.status_code == 201
     data = response.json()
 
-    expected_url = "https://drive.google.com/thumbnail?id=drivePhoto456&sz=w1600"
+    expected_url = "https://lh3.googleusercontent.com/d/1gqJIWKNyWLR1szLpU5XUpYAGygSPJs7V"
     assert data["featured_image_url"] == expected_url
     assert data["images"][0]["image_url"] == expected_url
-    assert "https://drive.google.com/thumbnail?id=driveFile123&sz=w1600" in data["body"]
+    assert "https://lh3.googleusercontent.com/d/driveFile123" in data["body"]
 
 
 @pytest.mark.asyncio

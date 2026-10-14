@@ -53,9 +53,9 @@ def normalize_image_url(url: str | None) -> str | None:
         return url
     # shortcut: regex parses common Google Drive share links; upgrade to official Google Drive API if private links are needed
     match = re.search(
-        r"(?:(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc|thumbnail)\?(?:[^&]+&)*id=)|drive\.usercontent\.google\.com\/download\?(?:[^&]+&)*id=)([a-zA-Z0-9_-]+)",
+        r"(?:(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc|thumbnail)\?(?:[^&]+&)*id=)|drive\.usercontent\.google\.com\/download\?(?:[^&]+&)*id=|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)",
         url,
     )
     if match:
-        return f"https://drive.google.com/thumbnail?id={match.group(1)}&sz=w1600"
+        return f"https://lh3.googleusercontent.com/d/{match.group(1)}"
     return url
