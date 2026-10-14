@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ApiError, apiPost } from "@/lib/api";
 import { getArticle, getRelated } from "@/lib/public-api";
-import { formatDateLong } from "@/lib/format";
+import { formatDateLong, normalizeImageUrl, normalizeHtmlImages } from "@/lib/format";
 import ArticleCard from "@/components/ArticleCard";
 import ArticleImageCarousel from "@/components/ArticleImageCarousel";
 import AdUnit from "@/components/AdUnit";
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title: article.title,
       description: article.subtitle ?? "",
-      images: article.featured_image_url ? [article.featured_image_url] : undefined,
+      images: article.featured_image_url ? [normalizeImageUrl(article.featured_image_url)] : undefined,
     },
   };
 }
@@ -89,7 +89,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 article.images && article.images.length > 0
                   ? article.images
                   : article.featured_image_url
-                  ? [{ id: 0, image_url: article.featured_image_url, photographer: null, sort_order: 0 }]
+                  ? [{ id: 0, image_url: normalizeImageUrl(article.featured_image_url), photographer: null, sort_order: 0 }]
                   : []
               }
             />
@@ -97,7 +97,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <div
               className="piaui-body"
               id="article-body"
-              dangerouslySetInnerHTML={{ __html: article.body }}
+              dangerouslySetInnerHTML={{ __html: normalizeHtmlImages(article.body) }}
             />
 
             <hr className="piaui-article__rule" />

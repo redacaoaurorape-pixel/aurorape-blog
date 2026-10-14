@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ArticleListItem } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, normalizeImageUrl } from "@/lib/format";
 
 export type ArticleCardVariant = "featured" | "editorial" | "compact" | "default";
 
@@ -15,14 +15,15 @@ export default function ArticleCard({
   variant?: ArticleCardVariant;
 }) {
   const href = `/artigo/${article.slug}`;
+  const imageUrl = normalizeImageUrl(article.featured_image_url);
 
   if (variant === "featured") {
     return (
       <article className="featured-card">
-        {article.featured_image_url && (
+        {imageUrl && (
           <div className="featured-card__image">
             <Link href={href} tabIndex={-1} aria-hidden="true">
-              <Image src={article.featured_image_url} alt={article.title} fill sizes={SIZES_GRID} style={{ objectFit: "cover" }} />
+              <Image src={imageUrl} alt={article.title} fill sizes={SIZES_GRID} style={{ objectFit: "cover" }} />
             </Link>
           </div>
         )}
@@ -40,10 +41,10 @@ export default function ArticleCard({
   if (variant === "editorial") {
     return (
       <article className="card-editorial">
-        {article.featured_image_url && (
+        {imageUrl && (
           <div className="card-editorial__image">
             <Link href={href} tabIndex={-1} aria-hidden="true">
-              <Image src={article.featured_image_url} alt={article.title} fill sizes="(min-width: 1024px) 50vw, 100vw" style={{ objectFit: "cover" }} />
+              <Image src={imageUrl} alt={article.title} fill sizes="(min-width: 1024px) 50vw, 100vw" style={{ objectFit: "cover" }} />
             </Link>
           </div>
         )}
@@ -75,10 +76,10 @@ export default function ArticleCard({
 
   return (
     <article className="article-card">
-      {article.featured_image_url && (
+      {imageUrl && (
         <div className="article-card__image">
           <Link href={href} tabIndex={-1} aria-hidden="true">
-            <Image src={article.featured_image_url} alt={article.title} fill sizes={SIZES_GRID} style={{ objectFit: "cover" }} />
+            <Image src={imageUrl} alt={article.title} fill sizes={SIZES_GRID} style={{ objectFit: "cover" }} />
           </Link>
         </div>
       )}

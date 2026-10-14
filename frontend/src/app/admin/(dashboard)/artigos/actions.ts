@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdminToken } from "@/lib/auth";
 import { createArticle, deleteArticle, updateArticle, uploadImage } from "@/lib/admin-api";
 import { ApiError } from "@/lib/api";
+import { normalizeImageUrl } from "@/lib/format";
 import type { ArticleCreate, ArticleImageIn } from "@/lib/types";
 
 export async function deleteArticleAction(id: number | string) {
@@ -24,7 +25,7 @@ function parseImagesJson(raw: string): ArticleImageIn[] {
 
   return parsed.flatMap((item): ArticleImageIn[] => {
     if (!item || typeof item !== "object") return [];
-    const url = String((item as { url?: unknown }).url ?? "").trim();
+    const url = normalizeImageUrl(String((item as { url?: unknown }).url ?? ""));
     if (!url) return [];
     const photographerRaw = (item as { photographer?: unknown }).photographer;
     const photographer = typeof photographerRaw === "string" ? photographerRaw.trim() : "";

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ArticleImageOut } from "@/lib/types";
+import { normalizeImageUrl } from "@/lib/format";
 
 export default function ArticleImageCarousel({ images }: { images: ArticleImageOut[] }) {
   const total = images.length;
@@ -63,7 +64,7 @@ export default function ArticleImageCarousel({ images }: { images: ArticleImageO
             >
               <img
                 className="article-image-carousel__img"
-                src={img.image_url}
+                src={normalizeImageUrl(img.image_url)}
                 alt={img.photographer ? `Foto: ${img.photographer}` : `Imagem ${i + 1} da matéria`}
                 loading={i === 0 ? "eager" : "lazy"}
               />

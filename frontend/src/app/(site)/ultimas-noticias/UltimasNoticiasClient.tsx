@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { ArticleListItem, CategoryOut } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, normalizeImageUrl } from "@/lib/format";
 
 interface Props {
   initialArticles: ArticleListItem[];
@@ -139,7 +139,7 @@ export default function UltimasNoticiasClient({ initialArticles, categories }: P
                 <div className="feed-item__image">
                   <Link href={`/artigo/${article.slug}`} tabIndex={-1} aria-hidden="true">
                     <Image
-                      src={article.featured_image_url}
+                      src={normalizeImageUrl(article.featured_image_url)}
                       alt={article.title}
                       fill
                       sizes="(min-width: 640px) 200px, 100vw"

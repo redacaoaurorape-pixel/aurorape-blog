@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ArticleListItem } from "@/lib/types";
-import { formatDateLong } from "@/lib/format";
+import { formatDateLong, normalizeImageUrl } from "@/lib/format";
 
 const INTERVAL_MS = 4000;
 
@@ -102,7 +102,7 @@ export default function HeroCarousel({
               {art.featured_image_url && (
                 <Image
                   className="hero-overlay__img"
-                  src={art.featured_image_url}
+                  src={normalizeImageUrl(art.featured_image_url)}
                   alt={art.title}
                   fill
                   sizes="100vw"

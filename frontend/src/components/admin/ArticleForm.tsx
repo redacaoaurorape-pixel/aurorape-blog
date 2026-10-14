@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
-import { toSlug } from "@/lib/format";
+import { toSlug, normalizeImageUrl } from "@/lib/format";
 import { uploadArticleImageAction } from "@/app/admin/(dashboard)/artigos/actions";
 import type { ArticleOut, AuthorMini, CategoryOut } from "@/lib/types";
 
@@ -74,7 +74,7 @@ export default function ArticleForm({
   const [images, setImages] = useState<ImageDraft[]>(() =>
     (article?.images ?? []).map((img) => ({
       key: makeDraftKey(),
-      url: img.image_url,
+      url: normalizeImageUrl(img.image_url),
       photographer: img.photographer ?? "",
       mode: "url" as const,
       uploading: false,
@@ -151,7 +151,7 @@ export default function ArticleForm({
 
   const imagesJsonValue = JSON.stringify(
     images
-      .map((img) => ({ url: img.url.trim(), photographer: img.photographer.trim() || null }))
+      .map((img) => ({ url: normalizeImageUrl(img.url.trim()), photographer: img.photographer.trim() || null }))
       .filter((img) => img.url)
   );
 
@@ -186,8 +186,9 @@ export default function ArticleForm({
   function handleInsertImage() {
     const url = window.prompt("URL da imagem para inserir no texto:", "https://");
     if (!url || !url.trim()) return;
+    const cleanUrl = normalizeImageUrl(url.trim());
     const alt = window.prompt("Legenda / Descrição da imagem (opcional):", "") ?? "";
-    const html = `<img src="${url.trim()}" alt="${alt.trim()}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 1rem 0;" />`;
+    const html = `<img src="${cleanUrl}" alt="${alt.trim()}" style="max-width: 100%; height: auto; border-radius: 4px; margin: 1rem 0;" />`;
     document.execCommand("insertHTML", false, html);
     editorRef.current?.focus();
     syncBody();
@@ -488,7 +489,7 @@ export default function ArticleForm({
               {images.length > 0 ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {images.map((img, index) => {
-                    const displaySrc = img.localPreviewUrl || img.url;
+                    const displaySrc = img.localPreviewUrl || normalizeImageUrl(img.url);
                     return (
                       <div
                         key={img.key}
@@ -619,8 +620,17 @@ export default function ArticleForm({
                                 type="url"
                                 placeholder="https://…"
                                 value={img.url}
-                                onChange={(e) => updateImage(img.key, { url: e.target.value, localPreviewUrl: undefined, previewError: false })}
+                                onChange={(e) =>
+                                  updateImage(img.key, {
+                                    url: normalizeImageUrl(e.target.value),
+                                    localPreviewUrl: undefined,
+                                    previewError: false,
+                                  })
+                                }
                               />
+                              <p className="form-hint" style={{ marginTop: "0.25rem" }}>
+                                Aceita links diretos ou do Google Drive (compartilhado como &quot;Qualquer pessoa com o link&quot;).
+                              </p>
                             </div>
                           ) : (
                             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -707,7 +717,7 @@ export default function ArticleForm({
                                   gap: "0.5rem",
                                 }}
                               >
-                                <span>Imagem inacessível ou link com bloqueio de acesso (hotlink). Verifique se o endereço é direto para o arquivo de imagem (.jpg, .png, .webp).</span>
+                                <span>Imagem inacessível ou link com bloqueio de acesso (hotlink). Se for do Google Drive, certifique-se de que o acesso está definido como &quot;Qualquer pessoa com o link&quot;.</span>
                                 <button
                                   type="button"
                                   className="btn-secondary"

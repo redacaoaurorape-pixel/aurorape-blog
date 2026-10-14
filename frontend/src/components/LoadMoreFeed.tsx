@@ -4,10 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ArticleListItem } from "@/lib/types";
-import { formatDate } from "@/lib/format";
+import { formatDate, normalizeImageUrl } from "@/lib/format";
 import { getCategoryArticles } from "@/lib/public-api";
 
 function FeedItem({ article }: { article: ArticleListItem }) {
+  const imageUrl = normalizeImageUrl(article.featured_image_url);
   return (
     <article className="feed-item">
       <div className="feed-item__body">
@@ -22,10 +23,10 @@ function FeedItem({ article }: { article: ArticleListItem }) {
           {article.reading_time_min ? <span>{article.reading_time_min} min</span> : null}
         </div>
       </div>
-      {article.featured_image_url && (
+      {imageUrl && (
         <div className="feed-item__image">
           <Link href={`/artigo/${article.slug}`} tabIndex={-1} aria-hidden="true">
-            <Image src={article.featured_image_url} alt={article.title} fill sizes="(min-width: 640px) 200px, 100vw" style={{ objectFit: "cover" }} />
+            <Image src={imageUrl} alt={article.title} fill sizes="(min-width: 640px) 200px, 100vw" style={{ objectFit: "cover" }} />
           </Link>
         </div>
       )}
