@@ -164,10 +164,56 @@ export default function ArticleForm({
   }
 
   function handleToolbarClick(cmd: string, val?: string) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+
+      // Trim leading and trailing whitespace from selection so browser format toggles work cleanly
+      if (!range.collapsed) {
+        if (range.endContainer.nodeType === Node.TEXT_NODE && range.endOffset > 0) {
+          const text = range.endContainer.textContent ?? "";
+          let end = range.endOffset;
+          while (end > 0 && /\s/.test(text[end - 1])) end--;
+          if (end !== range.endOffset && (range.startContainer !== range.endContainer || end >= range.startOffset)) {
+            range.setEnd(range.endContainer, end);
+          }
+        }
+        if (range.startContainer.nodeType === Node.TEXT_NODE) {
+          const text = range.startContainer.textContent ?? "";
+          let start = range.startOffset;
+          while (start < text.length && /\s/.test(text[start])) start++;
+          if (start !== range.startOffset && (range.startContainer !== range.endContainer || start <= range.endOffset)) {
+            range.setStart(range.startContainer, start);
+          }
+        }
+      } else if (editorRef.current) {
+        // If cursor is collapsed inside a formatted element, expand to the element to toggle it off
+        const selector = cmd === "italic" ? "i, em" : cmd === "bold" ? "b, strong" : cmd === "underline" ? "u" : null;
+        if (selector) {
+          const parent = sel.anchorNode?.parentElement?.closest(selector);
+          if (parent && editorRef.current.contains(parent)) {
+            range.selectNodeContents(parent);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      }
+    }
+
+    const italicParent = cmd === "italic" ? sel?.anchorNode?.parentElement?.closest("i, em") : null;
     document.execCommand(cmd, false, val);
+
+    // If an <em> was not removed by execCommand, unwrap it directly
+    if (italicParent && editorRef.current?.contains(italicParent)) {
+      if (italicParent.tagName.toLowerCase() === "em") {
+        italicParent.replaceWith(...Array.from(italicParent.childNodes));
+      }
+    }
+
     editorRef.current?.focus();
     syncBody();
   }
+
 
   function handleLink() {
     const selection = window.getSelection();
@@ -870,8 +916,15 @@ export default function ArticleForm({
                   if (e.key === "Tab") {
                     e.preventDefault();
                     document.execCommand("insertHTML", false, "&nbsp;&nbsp;&nbsp;&nbsp;");
+                  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "i") {
+                    e.preventDefault();
+                    handleToolbarClick("italic");
+                  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+                    e.preventDefault();
+                    handleToolbarClick("bold");
                   }
                 }}
+
               />
 
               {/* Textarea acessível e oculto sem atributo 'required' nativo para evitar bloqueios de validação do browser */}
