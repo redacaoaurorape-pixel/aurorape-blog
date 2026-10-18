@@ -56,7 +56,7 @@ export default function Header({ categories }: { categories: CategoryOut[] }) {
         </div>
       </div>
 
-      <header className="site-masthead site-header" role="banner">
+      <header className="site-masthead" role="banner">
         <div className="masthead-tier2">
           <div className="container">
             <Link href="/" className="masthead-logo" aria-label="Aurora PE — Página inicial">

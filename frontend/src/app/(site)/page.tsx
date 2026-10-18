@@ -124,8 +124,8 @@ export default async function HomePage() {
                       <Image
                         src={article.featured_image_url}
                         alt={article.title}
-                        width={80}
-                        height={60}
+                        width={140}
+                        height={95}
                         className="trending-item__thumb"
                       />
                     </div>
