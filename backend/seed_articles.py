@@ -10,7 +10,7 @@ from app.models.category import Category
 from app.models.author import Author
 from app.models.article import Article
 
-DATABASE_URL = "sqlite+aiosqlite:///./demo.db"
+from app.config import DATABASE_URL
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
