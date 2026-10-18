@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ApiError, apiPost } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { getArticle, getRelated } from "@/lib/public-api";
 import { formatDateLong, normalizeImageUrl, normalizeHtmlImages } from "@/lib/format";
 import ArticleCard from "@/components/ArticleCard";
@@ -10,16 +10,12 @@ import ArticleImageCarousel from "@/components/ArticleImageCarousel";
 import AdUnit from "@/components/AdUnit";
 import ArticleFontControl from "@/components/article/ArticleFontControl";
 import ShareBar from "@/components/article/ShareBar";
+import ViewTracker from "@/components/article/ViewTracker";
 import NewsletterForm from "@/components/NewsletterForm";
 
 async function loadArticle(slug: string) {
   try {
-    const article = await getArticle(slug);
-    if (article) {
-      // Fire-and-forget view count tracking in background
-      apiPost(`/articles/${slug}/view`).catch(() => {});
-    }
-    return article;
+    return await getArticle(slug);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
     throw err;
@@ -51,6 +47,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="container">
+      <ViewTracker slug={slug} />
       <div className="with-ad-sidebar">
         <div>
           <article className="piaui-article">
