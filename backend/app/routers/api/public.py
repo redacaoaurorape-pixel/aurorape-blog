@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.article import Article
+from app.models.category import Category
 from app.models.user import NewsletterSubscriber
 from app.schemas.article import ArticleListItem, ArticleOut, HomeResponse
 from app.schemas.author import AuthorOut
@@ -31,15 +33,17 @@ async def categories(db: AsyncSession = Depends(get_db)):
 
 @router.get("/categories/{slug}/articles", response_model=PaginatedResponse[ArticleListItem])
 async def category_articles(slug: str, page: int = Query(1, ge=1), db: AsyncSession = Depends(get_db)):
-    all_categories = await article_svc.get_all_categories(db)
-    cat = next((c for c in all_categories if c.slug == slug), None)
+    cat = (await db.execute(select(Category).where(Category.slug == slug))).scalars().first()
     if not cat:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     limit = 12
     offset = (page - 1) * limit
+    total = await db.scalar(
+        select(func.count(Article.id)).where(Article.category_id == cat.id, Article.is_published == True)
+    ) or 0
     items = await article_svc.get_feed(db, category_slug=slug, limit=limit, offset=offset)
-    return PaginatedResponse(items=items, total=len(items), page=page, page_size=limit)
+    return PaginatedResponse(items=items, total=total, page=page, page_size=limit)
 
 
 @router.get("/articles", response_model=list[ArticleListItem])

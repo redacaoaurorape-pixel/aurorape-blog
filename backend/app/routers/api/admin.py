@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -72,6 +72,8 @@ async def dashboard(
 
 @router.get("/articles", response_model=list[ArticleListItem])
 async def articles_list(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: AdminUser = Depends(get_current_admin),
 ):
@@ -79,6 +81,8 @@ async def articles_list(
         select(Article)
         .options(selectinload(Article.author), selectinload(Article.category))
         .order_by(Article.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return list(result.scalars().all())
 
@@ -128,7 +132,7 @@ async def article_create(
         featured_image_url=payload.images[0].url if payload.images else None,
         reading_time_min=reading_time,
         is_published=payload.is_published,
-        published_at=datetime.utcnow() if payload.is_published else None,
+        published_at=datetime.now(timezone.utc) if payload.is_published else None,
         author_id=payload.author_id,
         category_id=payload.category_id,
     )
@@ -171,8 +175,9 @@ async def article_update(
         raise HTTPException(status_code=404, detail="Artigo não encontrado")
 
     resolved_id = article.id
-    base_slug = slugify(payload.slug or payload.title)
-    article.slug = await unique_slug(db, base_slug, Article, exclude_id=resolved_id)
+    if payload.slug and payload.slug != article.slug:
+        base_slug = slugify(payload.slug)
+        article.slug = await unique_slug(db, base_slug, Article, exclude_id=resolved_id)
     article.title = payload.title
     article.subtitle = payload.subtitle
     article.chapeu = payload.chapeu
@@ -182,7 +187,7 @@ async def article_update(
     article.author_id = payload.author_id
     article.category_id = payload.category_id
     if payload.is_published and not article.is_published:
-        article.published_at = datetime.utcnow()
+        article.published_at = datetime.now(timezone.utc)
     article.is_published = payload.is_published
 
     article.images = [
@@ -236,12 +241,17 @@ async def upload_image(
             detail="Tipo de arquivo não suportado. Envie uma imagem JPEG, PNG, WEBP ou GIF.",
         )
 
-    contents = await file.read()
-    if len(contents) > MAX_UPLOAD_SIZE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo muito grande. O tamanho máximo permitido é 8MB.",
-        )
+    chunks = []
+    total_size = 0
+    while chunk := await file.read(1024 * 1024):
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Arquivo muito grande. O tamanho máximo permitido é 8MB.",
+            )
+        chunks.append(chunk)
+    contents = b"".join(chunks)
 
     ext = CONTENT_TYPE_EXTENSIONS[file.content_type]
     key = f"articles/{uuid.uuid4().hex}{ext}"
