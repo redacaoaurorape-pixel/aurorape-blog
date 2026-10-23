@@ -149,11 +149,6 @@ export default async function HomePage() {
         </section>
 
         <section aria-label="Mais notícias" style={{ marginBottom: "4rem" }}>
-          <div className="section-heading">
-            <div className="section-heading__bar" aria-hidden="true" />
-            <span className="section-heading__text">Mais notícias</span>
-          </div>
-
           <div className="feed" id="feed">
             {feed.map((article) => (
               <article key={article.id} className="feed-item">
