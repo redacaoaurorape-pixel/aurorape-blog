@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminToken } from "@/lib/auth";
-import { createArticle, deleteArticle, updateArticle, uploadImage } from "@/lib/admin-api";
+import { createArticle, deleteArticle, importDriveFolder, updateArticle, uploadImage } from "@/lib/admin-api";
 import { ApiError } from "@/lib/api";
 import { normalizeImageUrl } from "@/lib/format";
 import type { ArticleCreate, ArticleImageIn } from "@/lib/types";
@@ -78,6 +78,26 @@ export async function uploadArticleImageAction(
       return { error: err.message };
     }
     return { error: "Falha ao enviar a imagem." };
+  }
+}
+
+export async function importDriveFolderImagesAction(
+  folderUrl: string
+): Promise<{ urls: string[] } | { error: string }> {
+  const token = await requireAdminToken();
+  const clean = folderUrl.trim();
+  if (!clean) {
+    return { error: "Informe o link da pasta do Google Drive." };
+  }
+
+  try {
+    const result = await importDriveFolder(token, clean);
+    return { urls: result.urls };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { error: err.message };
+    }
+    return { error: "Falha ao importar imagens da pasta do Google Drive." };
   }
 }
 

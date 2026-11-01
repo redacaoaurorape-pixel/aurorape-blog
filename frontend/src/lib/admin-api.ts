@@ -10,6 +10,7 @@ import type {
   CategoryCreate,
   CategoryOut,
   DashboardResponse,
+  DriveFolderImportResponse,
   LoginRequest,
   TokenResponse,
   UploadResponse,
@@ -47,6 +48,10 @@ export function uploadImage(token: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);
   return apiPostForm<UploadResponse>("/admin/uploads", formData, token);
+}
+
+export function importDriveFolder(token: string, url: string) {
+  return apiPost<DriveFolderImportResponse>("/admin/uploads/drive-folder", { url }, token);
 }
 
 export function listAuthors(token: string) {

@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState, useTransition, type FormEvent } from "react";
+import { useRef, useState, useTransition, type DragEvent, type FormEvent } from "react";
 import { toSlug, normalizeImageUrl } from "@/lib/format";
-import { uploadArticleImageAction } from "@/app/admin/(dashboard)/artigos/actions";
+import { importDriveFolderImagesAction, uploadArticleImageAction } from "@/app/admin/(dashboard)/artigos/actions";
 import type { ArticleOut, AuthorMini, CategoryOut } from "@/lib/types";
 
 type ImageDraft = {
   key: string;
   url: string;
   photographer: string;
+  customCredit?: boolean;
   mode: "url" | "upload";
   uploading: boolean;
   uploadError: string | null;
@@ -77,6 +78,7 @@ export default function ArticleForm({
       key: makeDraftKey(),
       url: normalizeImageUrl(img.image_url),
       photographer: img.photographer ?? "",
+      customCredit: false,
       mode: "url" as const,
       uploading: false,
       uploadError: null,
@@ -84,6 +86,14 @@ export default function ArticleForm({
     }))
   );
   const [, startUploadTransition] = useTransition();
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const [driveFolderUrl, setDriveFolderUrl] = useState("");
+  const [driveFolderLoading, setDriveFolderLoading] = useState(false);
+  const [driveFolderMessage, setDriveFolderMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const [useSamePhotographer, setUseSamePhotographer] = useState(false);
+  const [sharedPhotographer, setSharedPhotographer] = useState("");
 
   const [isPublished, setIsPublished] = useState(article?.is_published ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +106,8 @@ export default function ArticleForm({
       {
         key: makeDraftKey(),
         url: "",
-        photographer: "",
+        photographer: useSamePhotographer ? sharedPhotographer : "",
+        customCredit: false,
         mode: "url",
         uploading: false,
         uploadError: null,
@@ -124,6 +135,22 @@ export default function ArticleForm({
     setImages((prev) => prev.map((img) => (img.key === key ? { ...img, ...patch } : img)));
   }
 
+  async function uploadSingleDraft(key: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const result = await uploadArticleImageAction(formData);
+    if ("error" in result) {
+      updateImage(key, { uploading: false, uploadError: result.error });
+    } else {
+      updateImage(key, {
+        uploading: false,
+        uploadError: null,
+        url: result.url,
+        previewError: false,
+      });
+    }
+  }
+
   function handleImageFile(key: string, file: File | undefined) {
     if (!file) return;
     const localUrl = URL.createObjectURL(file);
@@ -134,21 +161,102 @@ export default function ArticleForm({
       uploading: true,
       uploadError: null,
     });
-    const formData = new FormData();
-    formData.append("file", file);
-    startUploadTransition(async () => {
-      const result = await uploadArticleImageAction(formData);
-      if ("error" in result) {
-        updateImage(key, { uploading: false, uploadError: result.error });
-      } else {
-        updateImage(key, {
-          uploading: false,
-          uploadError: null,
-          url: result.url,
-          previewError: false,
-        });
-      }
+    startUploadTransition(() => {
+      void uploadSingleDraft(key, file);
     });
+  }
+
+  function handleBatchFiles(fileList: FileList | File[] | null | undefined) {
+    if (!fileList) return;
+    const files = Array.from(fileList).filter((f) => f.size > 0);
+    if (files.length === 0) return;
+
+    const drafts: ImageDraft[] = files.map((file) => ({
+      key: makeDraftKey(),
+      url: "",
+      photographer: useSamePhotographer ? sharedPhotographer : "",
+      customCredit: false,
+      mode: "upload",
+      uploading: true,
+      uploadError: null,
+      previewError: false,
+      localPreviewUrl: URL.createObjectURL(file),
+      file,
+    }));
+
+    setImages((prev) => [...prev, ...drafts]);
+    for (const draft of drafts) {
+      if (draft.file) {
+        void uploadSingleDraft(draft.key, draft.file);
+      }
+    }
+  }
+
+  function handleDropFiles(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setIsDraggingFiles(false);
+    handleBatchFiles(e.dataTransfer?.files);
+  }
+
+  async function handleImportDriveFolder() {
+    const url = driveFolderUrl.trim();
+    if (!url || driveFolderLoading) return;
+    setDriveFolderLoading(true);
+    setDriveFolderMessage(null);
+    const result = await importDriveFolderImagesAction(url);
+    setDriveFolderLoading(false);
+
+    if ("error" in result) {
+      setDriveFolderMessage({ type: "err", text: result.error });
+      return;
+    }
+
+    const newDrafts: ImageDraft[] = result.urls.map((imgUrl) => ({
+      key: makeDraftKey(),
+      url: normalizeImageUrl(imgUrl),
+      photographer: useSamePhotographer ? sharedPhotographer : "",
+      customCredit: false,
+      mode: "url",
+      uploading: false,
+      uploadError: null,
+      previewError: false,
+    }));
+
+    setImages((prev) => [...prev, ...newDrafts]);
+    setDriveFolderUrl("");
+    setDriveFolderMessage({
+      type: "ok",
+      text: `✓ ${newDrafts.length} imagem(ns) importada(s) da pasta do Google Drive.`,
+    });
+  }
+
+  function handleToggleSamePhotographer(checked: boolean) {
+    setUseSamePhotographer(checked);
+    if (checked) {
+      const fallback = sharedPhotographer || images.find((img) => img.photographer.trim())?.photographer || "";
+      setSharedPhotographer(fallback);
+      if (fallback) {
+        setImages((prev) =>
+          prev.map((img) => (img.customCredit ? img : { ...img, photographer: fallback, customCredit: false }))
+        );
+      }
+    }
+  }
+
+  function handleSharedPhotographerChange(value: string) {
+    setSharedPhotographer(value);
+    if (useSamePhotographer) {
+      setImages((prev) =>
+        prev.map((img) => (img.customCredit ? img : { ...img, photographer: value }))
+      );
+    }
+  }
+
+  function applySharedPhotographerToAll() {
+    setUseSamePhotographer(true);
+    setImages((prev) =>
+      prev.map((img) => ({ ...img, photographer: sharedPhotographer, customCredit: false }))
+    );
   }
 
   const imagesJsonValue = JSON.stringify(
@@ -514,7 +622,7 @@ export default function ArticleForm({
 
             {/* Imagens da Matéria - Centralizado entre o subtítulo e o corpo da matéria */}
             <div className="card form-section">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.875rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.875rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div>
                   <h3
                     style={{
@@ -529,7 +637,7 @@ export default function ArticleForm({
                     Imagens da matéria
                   </h3>
                   <p className="form-hint" style={{ margin: "0.25rem 0 0 0" }}>
-                    A primeira imagem vira a capa da matéria. Adicione fotos adicionais para o carrossel.
+                    A primeira imagem vira a capa da matéria. Adicione fotos individualmente ou importe em lote.
                   </p>
                 </div>
                 <button
@@ -540,6 +648,183 @@ export default function ArticleForm({
                 >
                   + Adicionar imagem
                 </button>
+              </div>
+
+              {/* Importação em lote: Múltiplos arquivos locais + Pasta do Google Drive */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: "0.875rem",
+                  marginBottom: "1rem",
+                  padding: "0.875rem",
+                  background: "var(--color-bg)",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-border)",
+                }}
+              >
+                {/* 1. Upload múltiplo / Drag-and-drop */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingFiles(true);
+                  }}
+                  onDragLeave={() => setIsDraggingFiles(false)}
+                  onDrop={handleDropFiles}
+                  onClick={() => batchFileInputRef.current?.click()}
+                  style={{
+                    border: isDraggingFiles ? "2px dashed var(--color-secondary)" : "1.5px dashed var(--color-border)",
+                    borderRadius: 6,
+                    padding: "0.75rem",
+                    background: isDraggingFiles ? "rgba(233, 69, 96, 0.04)" : "#fff",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    textAlign: "center",
+                    gap: "0.35rem",
+                  }}
+                >
+                  <input
+                    ref={batchFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      handleBatchFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--color-text)" }}>
+                    📁 Upload de múltiplos arquivos
+                  </span>
+                  <span className="form-hint" style={{ margin: 0, fontSize: "0.72rem" }}>
+                    Clique para selecionar várias fotos de uma vez ou arraste e solte aqui
+                  </span>
+                </div>
+
+                {/* 2. Importação via pasta do Google Drive */}
+                <div
+                  style={{
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 6,
+                    padding: "0.75rem",
+                    background: "#fff",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    gap: "0.4rem",
+                  }}
+                >
+                  <label
+                    htmlFor="drive-folder-url"
+                    style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--color-text)" }}
+                  >
+                    🔗 Importar pasta do Google Drive
+                  </label>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <input
+                      id="drive-folder-url"
+                      type="url"
+                      className="form-control"
+                      placeholder="https://drive.google.com/drive/folders/…"
+                      value={driveFolderUrl}
+                      onChange={(e) => setDriveFolderUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleImportDriveFolder();
+                        }
+                      }}
+                      style={{ fontSize: "0.8rem", padding: "0.4rem 0.65rem" }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      disabled={driveFolderLoading || !driveFolderUrl.trim()}
+                      onClick={() => void handleImportDriveFolder()}
+                      style={{ fontSize: "0.75rem", padding: "0.4rem 0.75rem", whiteSpace: "nowrap" }}
+                    >
+                      {driveFolderLoading ? "Importando…" : "Importar pasta"}
+                    </button>
+                  </div>
+                  {driveFolderMessage ? (
+                    <p
+                      className="form-hint"
+                      style={{
+                        margin: 0,
+                        fontSize: "0.72rem",
+                        color: driveFolderMessage.type === "err" ? "var(--color-secondary)" : "var(--color-primary)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {driveFolderMessage.text}
+                    </p>
+                  ) : (
+                    <span className="form-hint" style={{ margin: 0, fontSize: "0.7rem" }}>
+                      Cole o link de uma pasta pública (&quot;Qualquer pessoa com o link&quot;) para carregar todas as fotos.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Controle em lote: Mesmo crédito para todas as imagens */}
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem 0.875rem",
+                  background: useSamePhotographer ? "rgba(26, 26, 46, 0.03)" : "var(--color-bg)",
+                  borderRadius: 8,
+                  border: "1px solid var(--color-border)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}
+              >
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    cursor: "pointer",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    color: "var(--color-text)",
+                    userSelect: "none",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={useSamePhotographer}
+                    onChange={(e) => handleToggleSamePhotographer(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: "var(--color-secondary)", cursor: "pointer" }}
+                  />
+                  Aplicar o mesmo crédito para todas as imagens
+                </label>
+
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Crédito geral (ex: João Silva / Aurora PE)"
+                    value={sharedPhotographer}
+                    onChange={(e) => handleSharedPhotographerChange(e.target.value)}
+                    style={{ flex: 1, minWidth: 220, fontSize: "0.825rem", padding: "0.45rem 0.75rem" }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={applySharedPhotographerToAll}
+                    style={{ fontSize: "0.75rem", padding: "0.45rem 0.8rem", whiteSpace: "nowrap" }}
+                  >
+                    Replicar para todas
+                  </button>
+                </div>
+                <p className="form-hint" style={{ margin: 0, fontSize: "0.72rem" }}>
+                  Quando marcado, o crédito digitado sincroniza todas as fotos automaticamente. Você ainda pode editar ou destravar o crédito de uma foto específica abaixo.
+                </p>
               </div>
 
               {images.length > 0 ? (
@@ -698,8 +983,17 @@ export default function ArticleForm({
                                 className="form-control"
                                 type="file"
                                 accept="image/*"
+                                multiple
                                 disabled={img.uploading}
-                                onChange={(e) => handleImageFile(img.key, e.target.files?.[0])}
+                                onChange={(e) => {
+                                  const files = e.target.files ? Array.from(e.target.files) : [];
+                                  if (files.length > 0) {
+                                    handleImageFile(img.key, files[0]);
+                                  }
+                                  if (files.length > 1) {
+                                    handleBatchFiles(files.slice(1));
+                                  }
+                                }}
                               />
                               {img.uploading && (
                                 <p className="form-hint" style={{ marginTop: "0.25rem", color: "#d97706" }}>
@@ -743,15 +1037,39 @@ export default function ArticleForm({
                           )}
 
                           <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
-                              Foto: (crédito)
-                            </label>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem", gap: "0.5rem" }}>
+                              <label style={{ fontSize: "0.75rem", fontWeight: 600 }}>
+                                Foto: (crédito)
+                              </label>
+                              {useSamePhotographer && (
+                                <button
+                                  type="button"
+                                  className="btn-icon"
+                                  style={{ width: "auto", height: "auto", padding: "0.1rem 0.45rem", fontSize: "0.68rem" }}
+                                  onClick={() =>
+                                    updateImage(
+                                      img.key,
+                                      img.customCredit
+                                        ? { photographer: sharedPhotographer, customCredit: false }
+                                        : { customCredit: true }
+                                    )
+                                  }
+                                >
+                                  {img.customCredit ? "🔓 Individual (usar geral)" : "🔒 Sincronizado (destravar)"}
+                                </button>
+                              )}
+                            </div>
                             <input
                               className="form-control"
                               type="text"
                               placeholder="Nome do fotógrafo ou fonte da imagem"
                               value={img.photographer}
-                              onChange={(e) => updateImage(img.key, { photographer: e.target.value })}
+                              onChange={(e) =>
+                                updateImage(img.key, {
+                                  photographer: e.target.value,
+                                  customCredit: useSamePhotographer ? true : img.customCredit,
+                                })
+                              }
                             />
                           </div>
                         </div>
@@ -911,6 +1229,9 @@ export default function ArticleForm({
                 data-placeholder="Comece a escrever aqui…"
                 suppressContentEditableWarning
                 dangerouslySetInnerHTML={{ __html: article?.body ?? "" }}
+                onFocus={() => {
+                  document.execCommand("defaultParagraphSeparator", false, "p");
+                }}
                 onInput={syncBody}
                 onKeyDown={(e) => {
                   if (e.key === "Tab") {

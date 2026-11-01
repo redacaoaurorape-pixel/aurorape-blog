@@ -72,6 +72,10 @@ export interface UploadResponse {
   url: string;
 }
 
+export interface DriveFolderImportResponse {
+  urls: string[];
+}
+
 export interface ArticleListItem {
   id: number;
   title: string;
