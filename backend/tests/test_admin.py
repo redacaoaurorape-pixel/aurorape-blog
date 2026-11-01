@@ -208,3 +208,24 @@ async def test_admin_article_delete_cascades_images(auth_client, seed_data, db_s
 
     remaining = await db_session.execute(select(ArticleImage).where(ArticleImage.article_id == article_id))
     assert remaining.scalars().first() is None
+
+
+@pytest.mark.asyncio
+async def test_admin_article_preserves_paragraphs_and_blank_lines(auth_client, seed_data):
+    payload = {
+        "title": "Matéria com Parágrafos",
+        "slug": "materia-com-paragrafos",
+        "body": "Primeiro parágrafo<div>Segundo parágrafo\nSegunda linha</div><div><br></div><div>Terceiro parágrafo</div>",
+        "author_id": seed_data["author"].id,
+        "category_id": seed_data["category"].id,
+        "is_published": True,
+    }
+    response = await auth_client.post("/api/v1/admin/articles", json=payload)
+    assert response.status_code == 201
+    body = response.json()["body"]
+    assert body == (
+        "<p>Primeiro parágrafo</p>"
+        "<p>Segundo parágrafo<br>Segunda linha</p>"
+        "<p><br></p>"
+        "<p>Terceiro parágrafo</p>"
+    )

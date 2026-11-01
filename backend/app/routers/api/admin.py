@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,14 +13,28 @@ from app.models.article import Article, ArticleImage
 from app.models.author import Author
 from app.models.category import Category
 from app.models.user import AdminUser
-from app.schemas.article import ArticleCreate, ArticleListItem, ArticleOut, ArticleUpdate
+from app.schemas.article import (
+    ArticleCreate,
+    ArticleListItem,
+    ArticleOut,
+    ArticleUpdate,
+    DriveFolderImportRequest,
+    DriveFolderImportResponse,
+)
 from app.schemas.author import AuthorCreate, AuthorOut, AuthorUpdate
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.category import CategoryCreate, CategoryOut
 from app.services import article as article_svc
 from app.services.auth import authenticate_user, create_access_token, hash_password
 from app.services.storage import StorageNotConfiguredError, upload_file
-from app.services.text import calculate_reading_time, sanitize_html, slugify, unique_slug
+from app.services.text import (
+    calculate_reading_time,
+    extract_drive_folder_id,
+    parse_drive_folder_html,
+    sanitize_html,
+    slugify,
+    unique_slug,
+)
 
 ALLOWED_UPLOAD_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024
@@ -267,6 +282,51 @@ async def upload_image(
         )
 
     return {"url": url}
+
+
+async def fetch_drive_folder_images(folder_id: str) -> list[str]:
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; AuroraPE/1.0)"}
+    # shortcut: scrapes Google Drive public embeddedfolderview/folder HTML; upgrade to Drive API v3 if folders >100 items or private links are needed
+    async with httpx.AsyncClient(follow_redirects=True, timeout=15.0, headers=headers) as client:
+        embed_resp = await client.get(f"https://drive.google.com/embeddedfolderview?id={folder_id}#list")
+        if embed_resp.status_code == 200:
+            urls = parse_drive_folder_html(embed_resp.text, folder_id)
+            if urls:
+                return urls
+
+        folder_resp = await client.get(f"https://drive.google.com/drive/folders/{folder_id}")
+        if folder_resp.status_code == 200:
+            return parse_drive_folder_html(folder_resp.text, folder_id)
+    return []
+
+
+@router.post("/uploads/drive-folder", response_model=DriveFolderImportResponse)
+async def import_drive_folder(
+    payload: DriveFolderImportRequest,
+    current_user: AdminUser = Depends(get_current_admin),
+):
+    folder_id = extract_drive_folder_id(payload.url)
+    if not folder_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="URL inválida. Cole o link de uma pasta compartilhada do Google Drive.",
+        )
+
+    try:
+        urls = await fetch_drive_folder_images(folder_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Falha ao acessar a pasta do Google Drive: {exc}",
+        )
+
+    if not urls:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhuma imagem encontrada na pasta ou a pasta não está pública ('Qualquer pessoa com o link').",
+        )
+
+    return DriveFolderImportResponse(urls=urls)
 
 
 # ─── Authors ──────────────────────────────────────────────────────────────────

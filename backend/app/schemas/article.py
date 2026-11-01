@@ -90,3 +90,11 @@ class HomeResponse(BaseModel):
     hero: ArticleListItem | None = None
     secondary: list[ArticleListItem]
     feed: list[ArticleListItem]
+
+
+class DriveFolderImportRequest(BaseModel):
+    url: str
+
+
+class DriveFolderImportResponse(BaseModel):
+    urls: list[str]
