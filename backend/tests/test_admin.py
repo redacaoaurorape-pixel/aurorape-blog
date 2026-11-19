@@ -229,3 +229,22 @@ async def test_admin_article_preserves_paragraphs_and_blank_lines(auth_client, s
         "<p><br></p>"
         "<p>Terceiro parágrafo</p>"
     )
+
+
+@pytest.mark.asyncio
+async def test_admin_article_unique_slug_collision(auth_client, seed_data):
+    base = {
+        "title": "Mesmo Título",
+        "body": "<p>Texto</p>",
+        "author_id": seed_data["author"].id,
+        "category_id": seed_data["category"].id,
+        "is_published": True,
+    }
+    r1 = await auth_client.post("/api/v1/admin/articles", json=base)
+    r2 = await auth_client.post("/api/v1/admin/articles", json=base)
+    r3 = await auth_client.post("/api/v1/admin/articles", json=base)
+    assert [r1.json()["slug"], r2.json()["slug"], r3.json()["slug"]] == [
+        "mesmo-titulo",
+        "mesmo-titulo-2",
+        "mesmo-titulo-3",
+    ]

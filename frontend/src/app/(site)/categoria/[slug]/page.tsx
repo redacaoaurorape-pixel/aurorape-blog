@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCategories, getCategoryArticles } from "@/lib/public-api";
@@ -31,10 +30,10 @@ export default async function CategoryPage({
   const category = categories.find((c) => c.slug === slug);
   if (!category) notFound();
 
-  const { items: articles } = await getCategoryArticles(slug, page);
+  const { items: articles, total } = await getCategoryArticles(slug, page);
 
-  const mosaic = articles.slice(0, 3);
-  const rest = articles.slice(3);
+  const mosaic = page === 1 ? articles.slice(0, 3) : [];
+  const rest = page === 1 ? articles.slice(3) : articles;
 
   return (
     <div className="container">
@@ -46,11 +45,13 @@ export default async function CategoryPage({
 
       {articles.length > 0 ? (
         <>
-          <section aria-label={`Destaques de ${category.name}`} className="category-mosaic">
-            {mosaic.map((article) => (
-              <ArticleCard key={article.id} article={article} variant="editorial" />
-            ))}
-          </section>
+          {mosaic.length > 0 && (
+            <section aria-label={`Destaques de ${category.name}`} className="category-mosaic">
+              {mosaic.map((article) => (
+                <ArticleCard key={article.id} article={article} variant="editorial" />
+              ))}
+            </section>
+          )}
 
           {rest.length > 0 && (
             <>
@@ -58,22 +59,9 @@ export default async function CategoryPage({
                 <div className="section-heading__bar" aria-hidden="true" />
                 <span className="section-heading__text">Mais em {category.name}</span>
               </div>
-              <LoadMoreFeed categorySlug={slug} initialItems={rest} initialPage={page} pageSize={12} />
+              <LoadMoreFeed categorySlug={slug} initialItems={rest} initialPage={page} total={total} pageSize={12} />
             </>
           )}
-
-          <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginTop: "2.5rem" }}>
-            {page > 1 && (
-              <Link href={`/categoria/${slug}?page=${page - 1}`} className="btn-subscribe" style={{ background: "var(--color-primary)" }}>
-                ← Anterior
-              </Link>
-            )}
-            {articles.length >= 12 && (
-              <Link href={`/categoria/${slug}?page=${page + 1}`} className="btn-subscribe" style={{ background: "var(--color-primary)" }}>
-                Próxima →
-              </Link>
-            )}
-          </div>
         </>
       ) : (
         <p style={{ color: "var(--color-muted)", textAlign: "center", padding: "3rem 0" }}>

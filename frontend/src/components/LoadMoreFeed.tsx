@@ -38,17 +38,19 @@ export default function LoadMoreFeed({
   categorySlug,
   initialItems,
   initialPage,
+  total,
   pageSize = 12,
 }: {
   categorySlug?: string;
   initialItems: ArticleListItem[];
   initialPage: number;
+  total: number;
   pageSize?: number;
 }) {
   const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(initialPage);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(initialItems.length >= pageSize);
+  const [hasMore, setHasMore] = useState(initialPage * pageSize < total);
 
   async function loadMore() {
     if (!categorySlug) return;
@@ -58,7 +60,7 @@ export default function LoadMoreFeed({
       const res = await getCategoryArticles(categorySlug, next);
       setItems((prev) => [...prev, ...res.items]);
       setPage(next);
-      setHasMore(res.items.length >= pageSize);
+      setHasMore(next * pageSize < res.total);
     } finally {
       setLoading(false);
     }

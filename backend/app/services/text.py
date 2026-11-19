@@ -29,17 +29,18 @@ def slugify(value: str) -> str:
 
 
 async def unique_slug(db, base_slug: str, model, exclude_id: int | None = None) -> str:
-    slug = base_slug
+    query = select(model.slug).where(
+        (model.slug == base_slug) | model.slug.like(f"{base_slug}-%")
+    )
+    if exclude_id is not None:
+        query = query.where(model.id != exclude_id)
+    existing = set((await db.execute(query)).scalars().all())
+    if base_slug not in existing:
+        return base_slug
     suffix = 2
-    while True:
-        query = select(model.id).where(model.slug == slug)
-        if exclude_id is not None:
-            query = query.where(model.id != exclude_id)
-        result = await db.execute(query)
-        if not result.scalars().first():
-            return slug
-        slug = f"{base_slug}-{suffix}"
+    while f"{base_slug}-{suffix}" in existing:
         suffix += 1
+    return f"{base_slug}-{suffix}"
 
 
 def calculate_reading_time(html_body: str, words_per_minute: int = 200) -> int:
