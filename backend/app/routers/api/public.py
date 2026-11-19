@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1", tags=["public"])
 async def home(db: AsyncSession = Depends(get_db)):
     hero = await article_svc.get_hero(db)
     hero_id = hero.id if hero else None
-    secondary = await article_svc.get_secondary(db, exclude_id=hero_id, limit=4)
+    secondary = await article_svc.get_secondary(db, exclude_id=hero_id, limit=5)
     secondary_ids = [a.id for a in secondary] + ([hero_id] if hero_id else [])
     feed = await article_svc.get_feed(db, exclude_ids=secondary_ids, limit=10)
     return HomeResponse(hero=hero, secondary=secondary, feed=feed)
@@ -90,8 +90,9 @@ async def author_detail(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/search", response_model=list[ArticleListItem])
-async def search(q: str = "", db: AsyncSession = Depends(get_db)):
-    if not q or len(q) < 2:
+async def search(q: str = Query("", max_length=100), db: AsyncSession = Depends(get_db)):
+    q = q.strip()
+    if len(q) < 2:
         return []
     return await article_svc.search_articles(db, q)
 

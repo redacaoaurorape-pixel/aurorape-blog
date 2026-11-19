@@ -18,7 +18,7 @@ async def get_hero(db: AsyncSession) -> Article | None:
     return result.scalars().first()
 
 
-async def get_secondary(db: AsyncSession, exclude_id: int | None = None, limit: int = 4) -> list[Article]:
+async def get_secondary(db: AsyncSession, exclude_id: int | None = None, limit: int = 5) -> list[Article]:
     q = (
         select(Article)
         .where(Article.is_published == True)
@@ -88,6 +88,7 @@ async def get_related(db: AsyncSession, article: Article, limit: int = 3) -> lis
 
 
 async def search_articles(db: AsyncSession, query: str, limit: int = 8) -> list[Article]:
+    # shortcut: ILIKE runs on both SQLite tests and Postgres; upgrade to a Postgres tsvector GIN index when archive exceeds ~5k articles
     q = f"%{query}%"
     result = await db.execute(
         select(Article)

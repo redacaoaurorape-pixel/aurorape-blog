@@ -40,7 +40,7 @@ export default async function HomePage() {
       <div className="container">
         {secondary && secondary.length > 2 && (
           <section aria-label="Em destaque" className="featured-grid">
-            {secondary.slice(2).map((article) => (
+            {secondary.slice(2, 5).map((article) => (
               <ArticleCard key={article.id} article={article} variant="featured" />
             ))}
           </section>

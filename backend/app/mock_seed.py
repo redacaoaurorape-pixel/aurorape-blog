@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
+from sqlalchemy import select
 from app.database import engine, Base, AsyncSessionLocal
 from app.models.category import Category
 from app.models.author import Author
@@ -7,15 +8,15 @@ from app.models.article import Article
 from app.models.user import AdminUser
 from app.services.auth import hash_password
 
+
 async def seed_mock_data():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as db:
-        # Check if already seeded (since Vercel might reuse containers)
-        # But for :memory:, it's fresh anyway.
-        
-        # Categories
+        if (await db.execute(select(Category.id).limit(1))).scalars().first():
+            return
+
         categories = [
             Category(name="Política", slug="politica", description="Cobertura política do estado"),
             Category(name="Cultura", slug="cultura", description="A cena cultural pernambucana"),
@@ -25,7 +26,6 @@ async def seed_mock_data():
         db.add_all(categories)
         await db.flush()
 
-        # Authors
         authors = [
             Author(name="Maria Souza", slug="maria-souza", bio="Jornalista com 10 anos de experiência em política."),
             Author(name="Carlos Lima", slug="carlos-lima", bio="Especialista em cultura e entretenimento."),
@@ -34,11 +34,9 @@ async def seed_mock_data():
         db.add_all(authors)
         await db.flush()
 
-        # Admin
         admin = AdminUser(email="admin@aurorape.com.br", hashed_password=hash_password("admin123"))
         db.add(admin)
 
-        # Articles
         articles_data = [
             {
                 "title": "Os desafios da política em Pernambuco para 2026",
@@ -90,6 +88,16 @@ async def seed_mock_data():
                 "category_id": categories[3].id,
                 "featured_image_url": "https://picsum.photos/seed/river/1200/600",
             },
+            {
+                "title": "A força do teatro independente no Agreste",
+                "slug": "teatro-independente-agreste-pernambuco",
+                "subtitle": "Grupos locais mantêm viva a cena artística no interior.",
+                "chapeu": "Cultura",
+                "body": "<p>Do sertão ao agreste, o teatro pernambucano floresce com produções autônomas que levam reflexão e arte às praças públicas.</p>",
+                "author_id": authors[1].id,
+                "category_id": categories[1].id,
+                "featured_image_url": "https://picsum.photos/seed/theater/1200/600",
+            },
         ]
 
         now = datetime.utcnow()
@@ -103,3 +111,7 @@ async def seed_mock_data():
             db.add(article)
 
         await db.commit()
+
+
+if __name__ == "__main__":
+    asyncio.run(seed_mock_data())
