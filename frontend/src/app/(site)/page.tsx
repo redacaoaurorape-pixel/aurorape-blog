@@ -90,9 +90,6 @@ export default async function HomePage() {
             <div className="section-heading">
               <div className="section-heading__bar" aria-hidden="true" />
               <span className="section-heading__text">{section.name}</span>
-              <Link href={`/categoria/${section.slug}`} className="section-heading__link" aria-label={`Ver tudo de ${section.name}`}>
-                Ver tudo →
-              </Link>
             </div>
             <div className="cat-section__grid">
               <div className="cat-section__big-card">
