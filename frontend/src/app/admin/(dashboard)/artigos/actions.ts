@@ -69,6 +69,9 @@ export async function uploadArticleImageAction(
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Nenhum arquivo selecionado." };
   }
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Arquivo muito grande. O tamanho máximo permitido é 5MB." };
+  }
 
   try {
     const result = await uploadImage(token, file);

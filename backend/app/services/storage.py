@@ -1,3 +1,4 @@
+from functools import lru_cache
 from starlette.concurrency import run_in_threadpool
 
 from app import config
@@ -7,6 +8,7 @@ class StorageNotConfiguredError(Exception):
     """Levantada quando o endpoint de upload é chamado sem o bucket configurado."""
 
 
+@lru_cache(maxsize=1)
 def _build_client():
     import boto3
 
@@ -21,12 +23,22 @@ def _build_client():
 
 def _put_object(key: str, content: bytes, content_type: str) -> None:
     client = _build_client()
-    client.put_object(
-        Bucket=config.BUCKET_NAME,
-        Key=key,
-        Body=content,
-        ContentType=content_type,
-    )
+    try:
+        client.put_object(
+            Bucket=config.BUCKET_NAME,
+            Key=key,
+            Body=content,
+            ContentType=content_type,
+            ACL="public-read",
+        )
+    except Exception:
+        # Fallback para provedores S3 (ex: Railway Buckets, Tigris) que rejeitam parâmetro ACL
+        client.put_object(
+            Bucket=config.BUCKET_NAME,
+            Key=key,
+            Body=content,
+            ContentType=content_type,
+        )
 
 
 def _save_local_file(key: str, content: bytes) -> str:

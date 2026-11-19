@@ -36,12 +36,19 @@ from app.services.text import (
     unique_slug,
 )
 
-ALLOWED_UPLOAD_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024
+ALLOWED_UPLOAD_CONTENT_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/avif",
+    "image/gif",
+}
+MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 CONTENT_TYPE_EXTENSIONS = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
     "image/webp": ".webp",
+    "image/avif": ".avif",
     "image/gif": ".gif",
 }
 
@@ -253,7 +260,7 @@ async def upload_image(
     if file.content_type not in ALLOWED_UPLOAD_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tipo de arquivo não suportado. Envie uma imagem JPEG, PNG, WEBP ou GIF.",
+            detail="Tipo de arquivo não suportado. Envie uma imagem JPEG, PNG, WEBP ou AVIF.",
         )
 
     chunks = []
@@ -263,12 +270,12 @@ async def upload_image(
         if total_size > MAX_UPLOAD_SIZE_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Arquivo muito grande. O tamanho máximo permitido é 8MB.",
+                detail="Arquivo muito grande. O tamanho máximo permitido é 5MB.",
             )
         chunks.append(chunk)
     contents = b"".join(chunks)
 
-    ext = CONTENT_TYPE_EXTENSIONS[file.content_type]
+    ext = CONTENT_TYPE_EXTENSIONS.get(file.content_type, ".jpg")
     key = f"articles/{uuid.uuid4().hex}{ext}"
 
     try:

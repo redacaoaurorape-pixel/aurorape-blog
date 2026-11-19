@@ -689,7 +689,7 @@ export default function ArticleForm({
                   <input
                     ref={batchFileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/webp,image/avif"
                     multiple
                     style={{ display: "none" }}
                     onChange={(e) => {
@@ -698,10 +698,10 @@ export default function ArticleForm({
                     }}
                   />
                   <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--color-text)" }}>
-                    📁 Upload de múltiplos arquivos
+                    📁 Upload de fotos (computador ou celular)
                   </span>
                   <span className="form-hint" style={{ margin: 0, fontSize: "0.72rem" }}>
-                    Clique para selecionar várias fotos de uma vez ou arraste e solte aqui
+                    Toque para abrir a galeria ou arraste e solte fotos aqui (máx. 5MB cada)
                   </span>
                 </div>
 
@@ -977,12 +977,12 @@ export default function ArticleForm({
                           ) : (
                             <div className="form-group" style={{ marginBottom: 0 }}>
                               <label style={{ fontSize: "0.75rem", fontWeight: 600, display: "block", marginBottom: "0.25rem" }}>
-                                Selecionar do computador:
+                                Selecionar foto (computador ou celular):
                               </label>
                               <input
                                 className="form-control"
                                 type="file"
-                                accept="image/*"
+                                accept="image/png,image/jpeg,image/webp,image/avif"
                                 multiple
                                 disabled={img.uploading}
                                 onChange={(e) => {
@@ -995,6 +995,9 @@ export default function ArticleForm({
                                   }
                                 }}
                               />
+                              <p className="form-hint" style={{ marginTop: "0.2rem", fontSize: "0.72rem" }}>
+                                Máximo 5MB (JPEG, PNG, WEBP, AVIF).
+                              </p>
                               {img.uploading && (
                                 <p className="form-hint" style={{ marginTop: "0.25rem", color: "#d97706" }}>
                                   ⏳ Enviando imagem… Você pode continuar editando ou salvar o artigo mesmo assim.

@@ -21,6 +21,23 @@ async def test_upload_success(auth_client, seed_data, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_upload_avif_success(auth_client, seed_data, monkeypatch):
+    async def fake_upload_file(key: str, content: bytes, content_type: str) -> str:
+        return f"https://cdn.example.com/{key}"
+
+    monkeypatch.setattr("app.routers.api.admin.upload_file", fake_upload_file)
+
+    response = await auth_client.post(
+        "/api/v1/admin/uploads",
+        files={"file": ("foto.avif", b"fake-avif-bytes", "image/avif")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["url"].startswith("https://cdn.example.com/articles/")
+    assert data["url"].endswith(".avif")
+
+
+@pytest.mark.asyncio
 async def test_upload_invalid_content_type(auth_client, seed_data, monkeypatch):
     async def fake_upload_file(key: str, content: bytes, content_type: str) -> str:
         raise AssertionError("upload_file não deveria ser chamado para tipo inválido")
@@ -41,7 +58,7 @@ async def test_upload_too_large(auth_client, seed_data, monkeypatch):
 
     monkeypatch.setattr("app.routers.api.admin.upload_file", fake_upload_file)
 
-    oversized = b"0" * (8 * 1024 * 1024 + 1)
+    oversized = b"0" * (5 * 1024 * 1024 + 1)
     response = await auth_client.post(
         "/api/v1/admin/uploads",
         files={"file": ("foto.jpg", oversized, "image/jpeg")},
